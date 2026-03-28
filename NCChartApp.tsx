@@ -223,6 +223,21 @@ function midpointLon(startLon: number, endLon: number) {
   return normalizeLon(startLon + normalizeLon(endLon - startLon) / 2);
 }
 
+function getTodayLocalDate() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getCurrentLocalTime() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 function relativeChartAngle(lon: number, anchorLon: number) {
   return normalizeLon(lon - anchorLon);
 }
@@ -391,11 +406,13 @@ function JsonBlock({ value }: { value: unknown }) {
 }
 
 export default function AstroChartExtractorPreview() {
+  const defaultBirthDate = getTodayLocalDate();
+  const defaultBirthTime = getCurrentLocalTime();
   const [form, setForm] = useState({
     person_name: "김대한",
     email: "kimdaehan@example.com",
-    birth_date: "2026-01-01",
-    birth_time_local: "07:10",
+    birth_date: defaultBirthDate,
+    birth_time_local: defaultBirthTime,
     timezone: "Asia/Seoul",
     birth_place_name: "Seoul, South Korea",
     country_code: "KR",
@@ -441,6 +458,21 @@ export default function AstroChartExtractorPreview() {
     const lookup = new Map([...chart.bodies, ...chart.points].map((item) => [item.id, item.label]));
     return chart.availability.soft_missing.map((id) => lookup.get(id) || id);
   }, [chart]);
+  const savedLeadGroups = useMemo(() => {
+    const grouped = new Map<string, SavedLead[]>();
+    for (const lead of savedLeads) {
+      const key = lead.form.birth_date || "날짜 없음";
+      const bucket = grouped.get(key) || [];
+      bucket.push(lead);
+      grouped.set(key, bucket);
+    }
+    return Array.from(grouped.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, leads]) => ({
+        date,
+        leads: [...leads].sort((a, b) => (a.form.person_name || "").localeCompare(b.form.person_name || "")),
+      }));
+  }, [savedLeads]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -687,45 +719,21 @@ export default function AstroChartExtractorPreview() {
           </div>
 
           {accessPanelOpen && (
-            <div className="mt-5 grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-              <div className="space-y-3">
-                <div className="text-sm font-semibold text-slate-800">관리 화면 진입</div>
-                <div className="text-sm leading-6 text-slate-600">
-                  톱니바퀴는 내부 상세 화면 진입용입니다. 비밀번호를 입력하면 현재 차트의 상세 데이터와 저장된 명단 드롭다운을 볼 수 있어요.
-                </div>
-                <div className="flex gap-3">
-                  <input
-                    type="password"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="관리 비밀번호"
-                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3"
-                  />
-                  <button onClick={handleInternalAccess} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white">
-                    입장
-                  </button>
-                </div>
-                {accessMessage && <div className="text-sm text-rose-600">{accessMessage}</div>}
+            <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+              <div className="text-sm font-semibold text-slate-800">비밀번호를 입력하세요</div>
+              <div className="mt-3 flex gap-3">
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="관리 비밀번호"
+                  className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                />
+                <button onClick={handleInternalAccess} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white">
+                  입장
+                </button>
               </div>
-
-              <div className="space-y-3">
-                <div className="text-sm font-semibold text-slate-800">저장 명단 드롭다운</div>
-                <select
-                  value={selectedLeadId}
-                  onChange={(e) => loadSavedLead(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-                >
-                  <option value="">저장된 리드 선택</option>
-                  {savedLeads.map((lead) => (
-                    <option key={lead.id} value={lead.id}>
-                      {lead.label} · {lead.email || "email 없음"}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs leading-6 text-slate-500">
-                  현재는 브라우저 저장소 기반이며, 이후 실제 워드프레스/저장소 API로 같은 드롭다운 UI를 연결하면 됩니다.
-                </div>
-              </div>
+              {accessMessage && <div className="mt-3 text-sm text-rose-600">{accessMessage}</div>}
             </div>
           )}
         </div>
@@ -883,10 +891,23 @@ export default function AstroChartExtractorPreview() {
           </>
         ) : (
           <>
-            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-4 text-sm leading-7">
-              <div className="font-semibold mb-1">내부 화면 메모</div>
-              <div className="text-slate-600">
-                차트는 상단에 크게 두고, 저장된 명단을 드롭다운에서 빠르게 선택한 뒤 세부 점성학 데이터는 하단에서 검토하도록 재배치했습니다.
+            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-5 text-sm leading-7">
+              <div className="font-semibold mb-2">저장된 차트 목록</div>
+              <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 font-mono text-[13px] leading-7 text-slate-700">
+                {savedLeadGroups.length ? (
+                  savedLeadGroups.map((group) => (
+                    <div key={group.date} className="mb-3 last:mb-0">
+                      <div># {group.date}</div>
+                      {group.leads.map((lead) => (
+                        <div key={lead.id}>
+                          - {lead.form.person_name || "이름 없음"} · {lead.form.birth_time_local} · {lead.form.birth_place_name}
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  <div>- 저장된 차트가 아직 없습니다.</div>
+                )}
               </div>
             </div>
 
