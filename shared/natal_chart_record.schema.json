@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astro-chart-extractor.local/schemas/natal_chart_record.schema.json",
+  "title": "NatalChartRecord",
+  "type": "object",
+  "required": ["metadata", "input", "settings", "angles", "houses", "bodies", "points", "aspects", "availability"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["chart_id", "engine_name", "status"],
+      "properties": {
+        "chart_id": { "type": "string" },
+        "engine_name": { "type": "string" },
+        "status": { "type": "string" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "object",
+      "required": ["birth_date", "birth_time_local", "timezone", "birth_place_name", "latitude", "longitude"],
+      "properties": {
+        "person_name": { "type": ["string", "null"] },
+        "birth_date": { "type": "string" },
+        "birth_time_local": { "type": "string" },
+        "timezone": { "type": "string" },
+        "birth_place_name": { "type": "string" },
+        "country_code": { "type": ["string", "null"] },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "object",
+      "required": ["zodiac_type", "house_system", "node_mode", "lilith_mode", "fortune_formula"],
+      "properties": {
+        "zodiac_type": { "type": "string" },
+        "house_system": { "type": "string" },
+        "node_mode": { "type": "string" },
+        "lilith_mode": { "type": "string" },
+        "fortune_formula": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "angles": {
+      "type": "object",
+      "required": ["asc", "mc", "dsc", "ic"],
+      "properties": {
+        "asc": { "$ref": "#/$defs/anglePoint" },
+        "mc": { "$ref": "#/$defs/anglePoint" },
+        "dsc": { "$ref": "#/$defs/anglePoint" },
+        "ic": { "$ref": "#/$defs/anglePoint" }
+      },
+      "additionalProperties": false
+    },
+    "houses": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/houseCusp" }
+    },
+    "bodies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/chartBody" }
+    },
+    "points": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/chartPoint" }
+    },
+    "aspects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/aspect" }
+    },
+    "availability": {
+      "type": "object",
+      "required": ["core_complete", "soft_missing"],
+      "properties": {
+        "core_complete": { "type": "boolean" },
+        "soft_missing": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "anglePoint": {
+      "type": "object",
+      "required": ["id", "label", "sign", "degree", "formatted", "lon"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "sign": { "type": "string" },
+        "degree": { "type": "number" },
+        "formatted": { "type": "string" },
+        "lon": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "houseCusp": {
+      "type": "object",
+      "required": ["house", "sign", "degree", "formatted", "lon"],
+      "properties": {
+        "house": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "sign": { "type": "string" },
+        "degree": { "type": "number" },
+        "formatted": { "type": "string" },
+        "lon": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "chartBody": {
+      "type": "object",
+      "required": ["id", "label", "classification", "sign", "degree", "formatted", "lon"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "classification": { "type": "string" },
+        "definition": { "type": "string" },
+        "sign": { "type": "string" },
+        "degree": { "type": "number" },
+        "formatted": { "type": "string" },
+        "lon": { "type": "number" },
+        "house": { "type": ["integer", "null"] },
+        "retrograde": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "chartPoint": {
+      "$ref": "#/$defs/chartBody"
+    },
+    "aspect": {
+      "type": "object",
+      "required": ["id", "point_a", "point_b", "aspect_type", "orb_text"],
+      "properties": {
+        "id": { "type": "string" },
+        "point_a": { "type": "string" },
+        "point_b": { "type": "string" },
+        "aspect_type": { "type": "string" },
+        "orb_text": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from ...schemas import (
+    ChartExtractAndStoreResponse,
+    ChartExtractRequest,
+    NatalChartRecord,
+    TextChartExtractRequest,
+    TextChartExtractionResponse,
+)
+from ...services.chart_service import build_chart_record
+from ...services.chart_storage_service import store_chart_record
+from ...services.chart_text_parser import extract_chart_from_text
+
+router = APIRouter()
+
+
+@router.post("/api/chart/extract", response_model=NatalChartRecord)
+async def post_chart_extract(payload: ChartExtractRequest) -> NatalChartRecord:
+    return build_chart_record(payload)
+
+
+@router.post("/api/chart/extract-and-store", response_model=ChartExtractAndStoreResponse)
+async def post_chart_extract_and_store(payload: ChartExtractRequest) -> ChartExtractAndStoreResponse:
+    chart = build_chart_record(payload)
+    storage = await store_chart_record(chart)
+    return ChartExtractAndStoreResponse(chart=chart, storage=storage)
+
+
+@router.post("/api/chart/extract-text", response_model=TextChartExtractionResponse)
+async def post_chart_extract_text(payload: TextChartExtractRequest) -> TextChartExtractionResponse:
+    return extract_chart_from_text(payload)
