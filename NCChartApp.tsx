@@ -111,6 +111,22 @@ type SavedLead = {
   chart: NatalChartRecord;
 };
 
+type RemoteStoredChart = {
+  record_id: string;
+  person_name?: string | null;
+  birth_date: string;
+  birth_time_local?: string | null;
+  birth_place_name?: string | null;
+  email?: string | null;
+  created_at?: string | null;
+  chart?: NatalChartRecord | null;
+};
+
+type RemoteStoredChartGroup = {
+  date: string;
+  items: RemoteStoredChart[];
+};
+
 type CitySuggestion = {
   label: string;
   local_label?: string;
@@ -236,6 +252,49 @@ function getCurrentLocalTime() {
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
+}
+
+function titleCaseToken(value: string) {
+  if (!value) return "";
+  if (value.toLowerCase() === "usa") return "USA";
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
+function recoverBirthPlaceName(placeName?: string | null, createdAt?: string | null) {
+  const candidate = String(placeName || "").trim();
+  if (candidate && !candidate.includes("GMT") && !candidate.startsWith("Sat ")) {
+    return candidate;
+  }
+
+  const source = String(createdAt || "").trim();
+  const match = source.match(/^\d{4}-\d{2}-\d{2}(?:[T-]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?Z?)?-(.+)$/);
+  if (!match) return "";
+
+  const parts = match[1]
+    .split("_")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!parts.length) return "";
+
+  if (parts.length >= 2 && parts.slice(-2).join("_").toLowerCase() === "south_korea") {
+    const city = parts.slice(0, -2).map(titleCaseToken).join(" ");
+    return city ? `${city}, South Korea` : "South Korea";
+  }
+
+  return parts.map(titleCaseToken).join(" ");
+}
+
+function normalizeStoredBirthDate(value: string) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] || raw || "날짜 없음";
+}
+
+function normalizeStoredBirthTime(item: RemoteStoredChart) {
+  const dateMatch = String(item.birth_date || "").match(/^\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2})/);
+  if (dateMatch?.[1]) return dateMatch[1];
+  return String(item.birth_time_local || "").trim() || "--:--";
 }
 
 function relativeChartAngle(lon: number, anchorLon: number) {
@@ -443,6 +502,8 @@ export default function AstroChartExtractorPreview() {
   const [passwordInput, setPasswordInput] = useState("");
   const [accessMessage, setAccessMessage] = useState("");
   const [savedLeads, setSavedLeads] = useState<SavedLead[]>([]);
+  const [remoteStoredCharts, setRemoteStoredCharts] = useState<RemoteStoredChart[]>([]);
+  const [remoteChartsLoading, setRemoteChartsLoading] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [reportMessage, setReportMessage] = useState("");
   const [show64Key, setShow64Key] = useState(false);
@@ -473,6 +534,27 @@ export default function AstroChartExtractorPreview() {
         leads: [...leads].sort((a, b) => (a.form.person_name || "").localeCompare(b.form.person_name || "")),
       }));
   }, [savedLeads]);
+  const remoteStoredChartGroups = useMemo<RemoteStoredChartGroup[]>(() => {
+    const grouped = new Map<string, RemoteStoredChart[]>();
+    for (const item of remoteStoredCharts) {
+      const normalizedItem = {
+        ...item,
+        birth_date: normalizeStoredBirthDate(item.birth_date),
+        birth_time_local: normalizeStoredBirthTime(item),
+        birth_place_name: recoverBirthPlaceName(item.birth_place_name, item.created_at),
+      };
+      const bucket = grouped.get(normalizedItem.birth_date) || [];
+      bucket.push(normalizedItem);
+      grouped.set(normalizedItem.birth_date, bucket);
+    }
+
+    return Array.from(grouped.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, items]) => ({
+        date,
+        items: [...items].sort((a, b) => String(a.person_name || "").localeCompare(String(b.person_name || ""))),
+      }));
+  }, [remoteStoredCharts]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -488,6 +570,30 @@ export default function AstroChartExtractorPreview() {
       // ignore local storage parsing failures in the browser cache
     }
   }, []);
+
+  useEffect(() => {
+    if (!isInternalView) return;
+    let cancelled = false;
+    const run = async () => {
+      setRemoteChartsLoading(true);
+      try {
+        const res = await fetch(`${getApiBase()}/stored-charts?limit=100`);
+        if (!res.ok) throw new Error("stored charts unavailable");
+        const data = await res.json();
+        if (!cancelled) {
+          setRemoteStoredCharts(Array.isArray(data.items) ? data.items : []);
+        }
+      } catch {
+        if (!cancelled) setRemoteStoredCharts([]);
+      } finally {
+        if (!cancelled) setRemoteChartsLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isInternalView]);
 
   useEffect(() => {
     const q = cityQuery.trim();
@@ -569,6 +675,45 @@ export default function AstroChartExtractorPreview() {
       ...lead.form,
     }));
     setStatus(`${lead.form.person_name} 저장 차트를 불러왔어요.`);
+  }
+
+  function loadRemoteStoredChart(item: RemoteStoredChart) {
+    setSelectedLeadId(item.record_id);
+    if (item.chart) {
+      setChart(item.chart);
+      setHasChartResult(true);
+      setCityQuery(item.chart.input.birth_place_name);
+      setForm((prev) => ({
+        ...prev,
+        person_name: item.chart?.input.person_name || prev.person_name,
+        birth_date: item.chart.input.birth_date,
+        birth_time_local: item.chart.input.birth_time_local,
+        timezone: item.chart.input.timezone,
+        birth_place_name: item.chart.input.birth_place_name,
+        country_code: item.chart.input.country_code || prev.country_code,
+        latitude: String(item.chart.input.latitude),
+        longitude: String(item.chart.input.longitude),
+        email: item.email || prev.email,
+      }));
+      setStatus(`${item.person_name || "저장된 차트"} 차트를 불러왔어요.`);
+      return;
+    }
+
+    const birthDateMatch = String(item.birth_date || "").match(/^(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?(?:\s+\(([^)]+)\))?/);
+    const normalizedPlaceName = recoverBirthPlaceName(item.birth_place_name, item.created_at);
+    setForm((prev) => ({
+      ...prev,
+      person_name: item.person_name || prev.person_name,
+      email: item.email || prev.email,
+      birth_date: birthDateMatch?.[1] || prev.birth_date,
+      birth_time_local: birthDateMatch?.[2] || item.birth_time_local || prev.birth_time_local,
+      timezone: birthDateMatch?.[3] || prev.timezone,
+      birth_place_name: normalizedPlaceName || prev.birth_place_name,
+    }));
+    if (normalizedPlaceName) {
+      setCityQuery(normalizedPlaceName);
+    }
+    setStatus(`${item.person_name || "저장된 기록"} 정보를 불러왔어요. 차트를 다시 계산하면 최신 휠로 열립니다.`);
   }
 
   async function handleCalculate() {
@@ -894,7 +1039,30 @@ export default function AstroChartExtractorPreview() {
             <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-5 text-sm leading-7">
               <div className="font-semibold mb-2">저장된 차트 목록</div>
               <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 font-mono text-[13px] leading-7 text-slate-700">
-                {savedLeadGroups.length ? (
+                {remoteChartsLoading ? (
+                  <div>- 저장소 목록을 불러오는 중입니다.</div>
+                ) : remoteStoredChartGroups.length ? (
+                  remoteStoredChartGroups.map((group) => (
+                    <div key={group.date} className="mb-3 last:mb-0">
+                      <div># {group.date}</div>
+                      {group.items.map((item) => (
+                        <button
+                          key={item.record_id}
+                          type="button"
+                          onClick={() => loadRemoteStoredChart(item)}
+                          className="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left font-sans transition hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          <div className="text-sm font-semibold text-slate-900">
+                            {item.person_name || "이름 없음"}
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            {item.birth_time_local || "--:--"} · {item.birth_place_name || "지역 없음"}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ))
+                ) : savedLeadGroups.length ? (
                   savedLeadGroups.map((group) => (
                     <div key={group.date} className="mb-3 last:mb-0">
                       <div># {group.date}</div>

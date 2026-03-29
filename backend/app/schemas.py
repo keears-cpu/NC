@@ -162,3 +162,21 @@ class ChartStorageResult(BaseModel):
 class ChartExtractAndStoreResponse(BaseModel):
     chart: NatalChartRecord
     storage: ChartStorageResult
+
+
+class StoredChartListItem(BaseModel):
+    record_id: str
+    person_name: str | None = None
+    birth_date: str
+    birth_time_local: str | None = None
+    birth_place_name: str | None = None
+    email: str | None = None
+    created_at: str | None = None
+    chart: NatalChartRecord | None = None
+
+
+class StoredChartListResponse(BaseModel):
+    ok: bool
+    items: list[StoredChartListItem] = Field(default_factory=list)
+    source: str | None = None
+    message: str | None = None

@@ -6,11 +6,12 @@ from ...schemas import (
     ChartExtractAndStoreResponse,
     ChartExtractRequest,
     NatalChartRecord,
+    StoredChartListResponse,
     TextChartExtractRequest,
     TextChartExtractionResponse,
 )
 from ...services.chart_service import build_chart_record
-from ...services.chart_storage_service import store_chart_record
+from ...services.chart_storage_service import fetch_stored_charts, store_chart_record
 from ...services.chart_text_parser import extract_chart_from_text
 
 router = APIRouter()
@@ -31,3 +32,8 @@ async def post_chart_extract_and_store(payload: ChartExtractRequest) -> ChartExt
 @router.post("/api/chart/extract-text", response_model=TextChartExtractionResponse)
 async def post_chart_extract_text(payload: TextChartExtractRequest) -> TextChartExtractionResponse:
     return extract_chart_from_text(payload)
+
+
+@router.get("/api/chart/stored-charts", response_model=StoredChartListResponse)
+async def get_stored_charts(limit: int = 100) -> StoredChartListResponse:
+    return await fetch_stored_charts(limit=limit)

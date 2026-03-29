@@ -51,9 +51,16 @@ def test_build_apps_script_payload_embeds_chart_json():
 
     assert payload["record_id"] == "sample-chart"
     assert payload["chart_id"] == "sample-chart"
+    assert payload["person_name"] == "Sample"
     assert payload["source_type"] == "computed_by_fastapi"
     assert payload["extraction_mode"] == "computed_by_swiss_ephemeris"
     assert payload["birth_date"] == "2016-04-19"
+    assert payload["zodiac_type"] == "tropical"
+    assert payload["house_system"] == "placidus"
+    assert payload["core_complete"] is True
+    assert payload["soft_missing_json"] == "[]"
+    assert payload["warnings_json"] == "[]"
+    assert "\"chart_id\": \"sample-chart\"" in payload["chart_json"]
     assert payload["chart"]["metadata"]["engine_name"] == "swiss_ephemeris"
     assert payload["chart"]["angles"]["asc"]["formatted"] == "Virgo 12°48’"
 
