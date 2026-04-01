@@ -92,6 +92,8 @@ class NatalChartRecord(BaseModel):
 
 class ChartExtractRequest(BaseModel):
     person_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
     birth_date: str
     birth_time_local: str
     timezone: str = "Asia/Seoul"
@@ -107,6 +109,8 @@ class ChartExtractRequest(BaseModel):
     include_chiron: bool = True
     include_juno: bool = True
     include_vesta: bool = True
+    include_ceres: bool = True
+    include_pallas: bool = True
     include_vulcan: bool = False
     include_vertex: bool = True
     include_fortune: bool = True
@@ -167,6 +171,7 @@ class ChartExtractAndStoreResponse(BaseModel):
 class StoredChartListItem(BaseModel):
     record_id: str
     person_name: str | None = None
+    phone: str | None = None
     birth_date: str
     birth_time_local: str | None = None
     birth_place_name: str | None = None
@@ -178,5 +183,12 @@ class StoredChartListItem(BaseModel):
 class StoredChartListResponse(BaseModel):
     ok: bool
     items: list[StoredChartListItem] = Field(default_factory=list)
+    source: str | None = None
+    message: str | None = None
+
+
+class StoredChartDetailResponse(BaseModel):
+    ok: bool
+    item: StoredChartListItem | None = None
     source: str | None = None
     message: str | None = None

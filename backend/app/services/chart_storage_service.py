@@ -6,10 +6,13 @@ import re
 import httpx
 
 from ..core.config import AppSettings, get_settings
-from ..schemas import ChartStorageResult, NatalChartRecord, StoredChartListItem, StoredChartListResponse
+from ..schemas import ChartExtractRequest, ChartStorageResult, NatalChartRecord, StoredChartDetailResponse, StoredChartListItem, StoredChartListResponse
 
 
-def build_apps_script_payload(chart: NatalChartRecord) -> dict[str, object]:
+def build_apps_script_payload(
+    chart: NatalChartRecord,
+    request_payload: ChartExtractRequest | None = None,
+) -> dict[str, object]:
     chart_json = chart.model_dump(mode="json")
     return {
         "record_id": chart.metadata.chart_id,
@@ -17,6 +20,8 @@ def build_apps_script_payload(chart: NatalChartRecord) -> dict[str, object]:
         "engine_name": chart.metadata.engine_name,
         "status": chart.metadata.status,
         "person_name": chart.input.person_name,
+        "phone": request_payload.phone if request_payload else None,
+        "email": request_payload.email if request_payload else None,
         "source_type": "computed_by_fastapi",
         "extraction_mode": "computed_by_swiss_ephemeris",
         "classification": "computed_chart",
@@ -47,6 +52,7 @@ def build_apps_script_payload(chart: NatalChartRecord) -> dict[str, object]:
 
 async def store_chart_record(
     chart: NatalChartRecord,
+    request_payload: ChartExtractRequest | None = None,
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
@@ -58,7 +64,7 @@ async def store_chart_record(
             message="GOOGLE_APPS_SCRIPT_URL not configured",
         )
 
-    payload = build_apps_script_payload(chart)
+    payload = build_apps_script_payload(chart, request_payload=request_payload)
     try:
         async with httpx.AsyncClient(
             timeout=settings.google_apps_script_timeout_seconds,
@@ -144,6 +150,7 @@ def _coerce_stored_chart_item(raw: dict[str, object]) -> StoredChartListItem | N
     return StoredChartListItem(
         record_id=record_id,
         person_name=str(raw.get("person_name") or raw.get("name") or (chart.input.person_name if chart else "") or "").strip() or None,
+        phone=str(raw.get("phone") or "").strip() or None,
         birth_date=birth_date,
         birth_time_local=str(birth_time_local).strip() if birth_time_local else None,
         birth_place_name=birth_place_name,
@@ -228,4 +235,47 @@ async def fetch_stored_charts(
         items=items,
         source=settings.google_apps_script_url,
         message=None if response.is_success else response.text[:500],
+    )
+
+
+async def fetch_stored_chart(
+    record_id: str,
+    settings: AppSettings | None = None,
+) -> StoredChartDetailResponse:
+    settings = settings or get_settings()
+    if not settings.google_apps_script_url:
+        return StoredChartDetailResponse(ok=False, item=None, source=None, message="GOOGLE_APPS_SCRIPT_URL not configured")
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=settings.google_apps_script_timeout_seconds,
+            follow_redirects=True,
+        ) as client:
+            response = await client.get(
+                settings.google_apps_script_url,
+                params={"action": "get", "record_id": record_id},
+            )
+    except Exception as exc:
+        return StoredChartDetailResponse(ok=False, item=None, source=settings.google_apps_script_url, message=str(exc))
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return StoredChartDetailResponse(ok=False, item=None, source=settings.google_apps_script_url, message="apps_script_non_json_response")
+
+    raw_item: dict[str, object] | None = None
+    if isinstance(payload, dict):
+        if isinstance(payload.get("item"), dict):
+            raw_item = payload.get("item")
+        elif isinstance(payload.get("chart"), dict):
+            raw_item = payload.get("chart")
+        elif payload.get("ok") is True and payload.get("record_id"):
+            raw_item = payload
+
+    item = _coerce_stored_chart_item(raw_item) if raw_item else None
+    return StoredChartDetailResponse(
+        ok=response.is_success and item is not None,
+        item=item,
+        source=settings.google_apps_script_url,
+        message=None if response.is_success and item is not None else (response.text[:500] if not response.is_success else "stored_chart_not_found"),
     )

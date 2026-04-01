@@ -82,7 +82,7 @@ def ephemeris_runtime_status() -> dict[str, object]:
         "main_asteroid_file": main_asteroid_file,
         "main_asteroid_file_present": has_main_asteroid_file,
         "optional_points_degraded": not has_main_asteroid_file,
-        "optional_points_affected": ["chiron", "juno", "vesta"],
+        "optional_points_affected": ["chiron", "juno", "vesta", "ceres", "pallas"],
     }
 
 def _build_angles(asc: float, mc: float) -> dict[str, AnglePoint]:
@@ -129,7 +129,7 @@ def calculate_chart(payload: ChartExtractRequest) -> RawChartComputation:
     warnings = point_result.warnings
     soft_missing = point_result.soft_missing
 
-    aspect_items = bodies + [point for point in points if point.id in {"north_node_true", "north_node_mean", "chiron", "fortune", "vertex"}]
+    aspect_items = bodies + [point for point in points if point.id in {"north_node_true", "north_node_mean", "chiron", "fortune", "vertex", "ceres", "pallas"}]
 
     return RawChartComputation(
         jd_ut=jd_ut,

@@ -94,11 +94,13 @@ type WorkspaceMode = "public" | "internal";
 type SavedLead = {
   id: string;
   label: string;
+  phone: string;
   email: string;
   birth_place_name: string;
   created_at: string;
   form: {
     person_name: string;
+    phone: string;
     email: string;
     birth_date: string;
     birth_time_local: string;
@@ -114,6 +116,7 @@ type SavedLead = {
 type RemoteStoredChart = {
   record_id: string;
   person_name?: string | null;
+  phone?: string | null;
   birth_date: string;
   birth_time_local?: string | null;
   birth_place_name?: string | null;
@@ -185,7 +188,7 @@ const elementStroke: Record<string, string> = {
 
 const bodyGlyph: Record<string, string> = {
   sun: "☉", moon: "☽", mercury: "☿", venus: "♀", mars: "♂", jupiter: "♃", saturn: "♄", uranus: "♅", neptune: "♆", pluto: "♇",
-  chiron: "⚷", north_node_true: "☊", north_node_mean: "☊", lilith_mean: "⚸", lilith_true: "⚸", fortune: "⊗", vertex: "Vx",
+  chiron: "⚷", ceres: "⚳", pallas: "⚴", north_node_true: "☊", north_node_mean: "☊", lilith_mean: "⚸", lilith_true: "⚸", fortune: "⊗", vertex: "Vx",
   asc: "ASC", mc: "MC",
 };
 
@@ -444,6 +447,8 @@ const sampleChart: NatalChartRecord = {
     { id: "north_node_true", label: "True Node", classification: "mathematical_point", definition: "true_node", sign: "Gemini", degree: 16.4333, formatted: "Gemini 16°26’", lon: 76.4333, house: 7, retrograde: true },
     { id: "lilith_mean", label: "Lilith", classification: "mathematical_point", definition: "mean_apogee", sign: "Aquarius", degree: 28.15, formatted: "Aquarius 28°09’", lon: 328.15, house: 3 },
     { id: "chiron", label: "Chiron", classification: "asteroid", definition: "chiron", sign: "Gemini", degree: 0.1833, formatted: "Gemini 0°11’", lon: 60.1833, house: 7, retrograde: true },
+    { id: "ceres", label: "Ceres", classification: "asteroid", definition: "ceres", sign: "Virgo", degree: 8.25, formatted: "Virgo 8°15’", lon: 158.25, house: 10, retrograde: false },
+    { id: "pallas", label: "Pallas Athena", classification: "asteroid", definition: "pallas", sign: "Aries", degree: 14.1, formatted: "Aries 14°06’", lon: 14.1, house: 5, retrograde: false },
     { id: "fortune", label: "Part of Fortune", classification: "mathematical_point", definition: "day_night_formula", sign: "Pisces", degree: 19.7833, formatted: "Pisces 19°47’", lon: 349.7833, house: 4 },
     { id: "vertex", label: "Vertex", classification: "mathematical_point", definition: "vertex", sign: "Cancer", degree: 15.1833, formatted: "Cancer 15°11’", lon: 105.1833, house: 8 },
   ],
@@ -469,7 +474,9 @@ export default function AstroChartExtractorPreview() {
   const defaultBirthTime = getCurrentLocalTime();
   const [form, setForm] = useState({
     person_name: "김대한",
+    phone: "010-0000-0000",
     email: "kimdaehan@example.com",
+    consentPersonalInfo: false,
     birth_date: defaultBirthDate,
     birth_time_local: defaultBirthTime,
     timezone: "Asia/Seoul",
@@ -484,6 +491,8 @@ export default function AstroChartExtractorPreview() {
     include_chiron: true,
     include_juno: true,
     include_vesta: true,
+    include_ceres: true,
+    include_pallas: true,
     include_vulcan: false,
     include_vertex: true,
     include_fortune: true,
@@ -504,8 +513,8 @@ export default function AstroChartExtractorPreview() {
   const [savedLeads, setSavedLeads] = useState<SavedLead[]>([]);
   const [remoteStoredCharts, setRemoteStoredCharts] = useState<RemoteStoredChart[]>([]);
   const [remoteChartsLoading, setRemoteChartsLoading] = useState(false);
+  const [adminSearchQuery, setAdminSearchQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState("");
-  const [reportMessage, setReportMessage] = useState("");
   const [show64Key, setShow64Key] = useState(false);
   const cityBoxRef = useRef<HTMLDivElement | null>(null);
   const chartCardRef = useRef<HTMLDivElement | null>(null);
@@ -555,6 +564,61 @@ export default function AstroChartExtractorPreview() {
         items: [...items].sort((a, b) => String(a.person_name || "").localeCompare(String(b.person_name || ""))),
       }));
   }, [remoteStoredCharts]);
+  const filteredSavedLeadGroups = useMemo(() => {
+    const query = normalizeText(adminSearchQuery);
+    if (!query) return savedLeadGroups;
+
+    return savedLeadGroups
+      .map((group) => ({
+        ...group,
+        leads: group.leads.filter((lead) =>
+          normalizeText(
+            [
+              group.date,
+              lead.id,
+              lead.form.person_name,
+              lead.form.birth_date,
+              lead.form.birth_time_local,
+              lead.form.birth_place_name,
+              lead.email,
+            ].join(" ")
+          ).includes(query)
+        ),
+      }))
+      .filter((group) => group.leads.length > 0);
+  }, [adminSearchQuery, savedLeadGroups]);
+  const filteredRemoteStoredChartGroups = useMemo(() => {
+    const query = normalizeText(adminSearchQuery);
+    if (!query) return remoteStoredChartGroups;
+
+    return remoteStoredChartGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) =>
+          normalizeText(
+            [
+              group.date,
+              item.record_id,
+              item.person_name,
+              item.birth_date,
+              item.birth_time_local,
+              item.birth_place_name,
+              item.phone,
+              item.email,
+            ].join(" ")
+          ).includes(query)
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [adminSearchQuery, remoteStoredChartGroups]);
+  const visibleRemoteChartCount = useMemo(
+    () => filteredRemoteStoredChartGroups.reduce((sum, group) => sum + group.items.length, 0),
+    [filteredRemoteStoredChartGroups]
+  );
+  const visibleSavedLeadCount = useMemo(
+    () => filteredSavedLeadGroups.reduce((sum, group) => sum + group.leads.length, 0),
+    [filteredSavedLeadGroups]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -642,6 +706,7 @@ export default function AstroChartExtractorPreview() {
       created_at: new Date().toISOString(),
       form: {
         person_name: form.person_name,
+        phone: form.phone,
         email: form.email,
         birth_date: form.birth_date,
         birth_time_local: form.birth_time_local,
@@ -677,8 +742,19 @@ export default function AstroChartExtractorPreview() {
     setStatus(`${lead.form.person_name} 저장 차트를 불러왔어요.`);
   }
 
-  function loadRemoteStoredChart(item: RemoteStoredChart) {
+  async function loadRemoteStoredChart(item: RemoteStoredChart) {
     setSelectedLeadId(item.record_id);
+    if (!item.chart) {
+      try {
+        const res = await fetch(`${getApiBase()}/stored-charts/${encodeURIComponent(item.record_id)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.item) item = data.item;
+        }
+      } catch {
+        // fall back to form-only restore below
+      }
+    }
     if (item.chart) {
       setChart(item.chart);
       setHasChartResult(true);
@@ -693,6 +769,7 @@ export default function AstroChartExtractorPreview() {
         country_code: item.chart.input.country_code || prev.country_code,
         latitude: String(item.chart.input.latitude),
         longitude: String(item.chart.input.longitude),
+        phone: item.phone || prev.phone,
         email: item.email || prev.email,
       }));
       setStatus(`${item.person_name || "저장된 차트"} 차트를 불러왔어요.`);
@@ -704,6 +781,7 @@ export default function AstroChartExtractorPreview() {
     setForm((prev) => ({
       ...prev,
       person_name: item.person_name || prev.person_name,
+      phone: item.phone || prev.phone,
       email: item.email || prev.email,
       birth_date: birthDateMatch?.[1] || prev.birth_date,
       birth_time_local: birthDateMatch?.[2] || item.birth_time_local || prev.birth_time_local,
@@ -717,13 +795,19 @@ export default function AstroChartExtractorPreview() {
   }
 
   async function handleCalculate() {
+    if (!form.consentPersonalInfo) {
+      setStatus("개인정보 수집 및 이용 동의가 필요합니다.");
+      return;
+    }
+
     setLoading(true);
     setStatus("무료 네이탈 차트를 계산하고 있어요...");
     setInternalStatusDetail("");
-    setReportMessage("");
     try {
       const payload = {
         person_name: form.person_name,
+        phone: form.phone,
+        email: form.email,
         birth_date: form.birth_date,
         birth_time_local: form.birth_time_local,
         timezone: form.timezone,
@@ -739,6 +823,8 @@ export default function AstroChartExtractorPreview() {
         include_chiron: form.include_chiron,
         include_juno: form.include_juno,
         include_vesta: form.include_vesta,
+        include_ceres: form.include_ceres,
+        include_pallas: form.include_pallas,
         include_vulcan: form.include_vulcan,
         include_vertex: form.include_vertex,
         include_fortune: form.include_fortune,
@@ -788,14 +874,6 @@ export default function AstroChartExtractorPreview() {
     }
   }
 
-  function loadSample() {
-    setChart(sampleChart);
-    setHasChartResult(true);
-    persistLead(sampleChart);
-    setStatus("기본 차트를 다시 불러왔어요.");
-    setReportMessage("");
-  }
-
   function handleInternalAccess() {
     if (passwordInput === getInternalAccessPassword()) {
       setWorkspaceMode("internal");
@@ -822,10 +900,6 @@ export default function AstroChartExtractorPreview() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-  }
-
-  function handleGenerateReport() {
-    setReportMessage("보고서 생성하기 버튼은 준비됐고, 다음 단계에서 코칭 리포트 앱 연결만 붙이면 됩니다.");
   }
 
   return (
@@ -890,7 +964,7 @@ export default function AstroChartExtractorPreview() {
                 <div>
                   <h2 className="text-2xl font-semibold">무료 차트 신청</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    생년월일, 출생 시간, 지역, 이름, 이메일을 입력하면 차트를 생성하고 이후 보고서 앱과 연결할 수 있습니다.
+                    생년월일, 출생 시간, 지역, 이름, 연락처, 이메일을 입력하면 차트를 생성할 수 있습니다.
                   </p>
                 </div>
 
@@ -898,6 +972,11 @@ export default function AstroChartExtractorPreview() {
                   <label className="space-y-1 md:col-span-2">
                     <span className="text-slate-600">이름</span>
                     <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.person_name} onChange={(e) => setForm((prev) => ({ ...prev, person_name: e.target.value }))} />
+                  </label>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-slate-600">연락처</span>
+                    <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="010-1234-5678" />
                   </label>
 
                   <label className="space-y-1 md:col-span-2">
@@ -960,12 +1039,21 @@ export default function AstroChartExtractorPreview() {
                     <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.country_code} onChange={(e) => setForm((prev) => ({ ...prev, country_code: e.target.value }))} />
                   </label>
                 </div>
+                <label className="mt-6 flex items-start gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 shrink-0 accent-slate-900"
+                    checked={form.consentPersonalInfo}
+                    onChange={(e) => setForm((prev) => ({ ...prev, consentPersonalInfo: e.target.checked }))}
+                  />
+                  <span>
+                    개인정보는 3개월간 보관되며, 차트분석 전달 및 마케팅에만 사용됩니다.
+                  </span>
+                </label>
+
                 <div className="mt-6 flex gap-3">
                   <button onClick={handleCalculate} disabled={loading} className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 font-medium text-white shadow disabled:opacity-60">
-                    {loading ? "차트 계산 중..." : "무료 차트 보기"}
-                  </button>
-                  <button onClick={loadSample} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 font-medium text-slate-700">
-                    기본 차트
+                    {loading ? "차트 계산 중..." : "차트 신청하기"}
                   </button>
                 </div>
 
@@ -993,9 +1081,7 @@ export default function AstroChartExtractorPreview() {
                       <button onClick={handleDownloadChart} disabled={!hasChartResult} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-50">
                         다운로드
                       </button>
-                      <button onClick={handleGenerateReport} disabled={!hasChartResult} className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-medium text-slate-950 disabled:opacity-50">
-                        보고서 생성하기
-                      </button>
+
                     </div>
                   </div>
 
@@ -1023,12 +1109,6 @@ export default function AstroChartExtractorPreview() {
                       <div className="mt-2 text-sm font-medium leading-6">{form.email || "이메일 미입력"}</div>
                     </div>
                   </div>
-
-                  {reportMessage && (
-                    <div className="mt-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
-                      {reportMessage}
-                    </div>
-                  )}
                 </div>
 
               </div>
@@ -1038,41 +1118,82 @@ export default function AstroChartExtractorPreview() {
           <>
             <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-5 text-sm leading-7">
               <div className="font-semibold mb-2">저장된 차트 목록</div>
+              <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center">
+                <input
+                  value={adminSearchQuery}
+                  onChange={(e) => setAdminSearchQuery(e.target.value)}
+                  placeholder="이름, 날짜, 시간, 지역, record_id 검색"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-400 md:flex-1"
+                />
+                <div className="text-xs text-slate-500">
+                  {remoteStoredCharts.length ? `${visibleRemoteChartCount}건 표시` : `${visibleSavedLeadCount}건 표시`}
+                </div>
+              </div>
               <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 font-mono text-[13px] leading-7 text-slate-700">
                 {remoteChartsLoading ? (
                   <div>- 저장소 목록을 불러오는 중입니다.</div>
-                ) : remoteStoredChartGroups.length ? (
-                  remoteStoredChartGroups.map((group) => (
+                ) : filteredRemoteStoredChartGroups.length ? (
+                  filteredRemoteStoredChartGroups.map((group) => (
                     <div key={group.date} className="mb-3 last:mb-0">
                       <div># {group.date}</div>
                       {group.items.map((item) => (
                         <button
                           key={item.record_id}
                           type="button"
-                          onClick={() => loadRemoteStoredChart(item)}
-                          className="mt-2 block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left font-sans transition hover:border-slate-300 hover:bg-slate-50"
+                          onClick={() => { void loadRemoteStoredChart(item); }}
+                          className={`mt-2 block w-full rounded-2xl border px-4 py-3 text-left font-sans transition ${
+                            selectedLeadId === item.record_id
+                              ? "border-slate-900 bg-slate-100 shadow-sm"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          }`}
                         >
-                          <div className="text-sm font-semibold text-slate-900">
-                            {item.person_name || "이름 없음"}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-sm font-semibold text-slate-900">
+                              {item.person_name || "이름 없음"}
+                            </div>
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                              {item.record_id}
+                            </div>
                           </div>
                           <div className="text-sm text-slate-600">
-                            {item.birth_time_local || "--:--"} · {item.birth_place_name || "지역 없음"}
+                            {group.date} · {item.birth_time_local || "--:--"} · {item.birth_place_name || "지역 없음"}
                           </div>
                         </button>
                       ))}
                     </div>
                   ))
-                ) : savedLeadGroups.length ? (
-                  savedLeadGroups.map((group) => (
+                ) : filteredSavedLeadGroups.length ? (
+                  filteredSavedLeadGroups.map((group) => (
                     <div key={group.date} className="mb-3 last:mb-0">
                       <div># {group.date}</div>
                       {group.leads.map((lead) => (
-                        <div key={lead.id}>
-                          - {lead.form.person_name || "이름 없음"} · {lead.form.birth_time_local} · {lead.form.birth_place_name}
-                        </div>
+                        <button
+                          key={lead.id}
+                          type="button"
+                          onClick={() => loadSavedLead(lead.id)}
+                          className={`mt-2 block w-full rounded-2xl border px-4 py-3 text-left font-sans transition ${
+                            selectedLeadId === lead.id
+                              ? "border-slate-900 bg-slate-100 shadow-sm"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-sm font-semibold text-slate-900">
+                              {lead.form.person_name || "이름 없음"}
+                            </div>
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                              local
+                            </div>
+                          </div>
+                          <div className="text-sm text-slate-600">
+                            {group.date} · {lead.form.birth_time_local || "--:--"} · {lead.form.birth_place_name || "지역 없음"}
+                          </div>
+                        </button>
                       ))}
                     </div>
                   ))
+                ) : adminSearchQuery.trim() ? (
+                  <div>- 검색 결과가 없습니다.</div>
                 ) : (
                   <div>- 저장된 차트가 아직 없습니다.</div>
                 )}

@@ -11,6 +11,8 @@ OPTIONAL_POINT_MAP = {
     "chiron": ("chiron", "Chiron", "asteroid", "chiron", getattr(swe, "CHIRON", None)),
     "juno": ("juno", "Juno", "asteroid", "juno", getattr(swe, "JUNO", None)),
     "vesta": ("vesta", "Vesta", "asteroid", "vesta", getattr(swe, "VESTA", None)),
+    "ceres": ("ceres", "Ceres", "asteroid", "ceres", getattr(swe, "CERES", None)),
+    "pallas": ("pallas", "Pallas Athena", "asteroid", "pallas", getattr(swe, "PALLAS", None)),
     "vulcan": ("vulcan", "Vulcan", "hypothetical", "vulcan", getattr(swe, "VULCAN", None)),
 }
 
@@ -96,6 +98,8 @@ def calculate_points(
         "chiron": payload.include_chiron,
         "juno": payload.include_juno,
         "vesta": payload.include_vesta,
+        "ceres": payload.include_ceres,
+        "pallas": payload.include_pallas,
         "vulcan": payload.include_vulcan,
     }.items():
         if not enabled:
