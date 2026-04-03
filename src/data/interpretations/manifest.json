@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-04-03T18:33:14.016Z",
+  "batches": {
+    "1": [
+      "sun",
+      "moon"
+    ],
+    "2": [
+      "mercury",
+      "venus",
+      "mars"
+    ],
+    "3": [
+      "jupiter",
+      "saturn"
+    ],
+    "4": [
+      "uranus",
+      "neptune",
+      "pluto"
+    ],
+    "5": [
+      "node_north",
+      "node_south",
+      "chiron"
+    ]
+  },
+  "totals": {
+    "planet_in_sign": 156,
+    "planet_in_house": 156,
+    "asc_in_sign": 12,
+    "ruler_placement": 480,
+    "node_chiron": 72
+  }
+}

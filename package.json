@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build:astro-dictionary": "node scripts/build-astro-dictionary.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
