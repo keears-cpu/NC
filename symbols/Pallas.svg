@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>Vulcan</title>
+  <title>Pallas</title>
   <g fill="none" stroke="#111111" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M256 84v92" />
-    <path d="M156 176l100 188 100-188" />
+    <path d="M256 92l84 84-84 84-84-84z" />
+    <path d="M256 260v120" />
+    <path d="M196 380h120" />
+    <path d="M220 424h72" />
   </g>
 </svg>

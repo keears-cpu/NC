@@ -1,4 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <title>Pluto</title>
-  <path d="M500 1496H909Q1211 1496 1311 1288Q1343 1211 1343 1116Q1343 850 1092 758Q1033 741 979 741H637V146H1271L1279 138V8L1271 0H500L492 8V1487ZM637 1356V880H963Q1093 880 1165 1010Q1181 1036 1189 1116Q1189 1280 1027 1340Q990 1356 909 1356Z" fill="#111111" transform="translate(10.679 456.000) scale(0.267380 -0.267380)"/>
+  <g fill="none" stroke="#111111" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="256" cy="142" r="76" />
+    <path d="M132 218Q256 328 380 218" />
+    <path d="M256 274v152" />
+    <path d="M184 354h144" />
+  </g>
 </svg>

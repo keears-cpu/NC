@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>Vulcan</title>
+  <title>Ceres</title>
   <g fill="none" stroke="#111111" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M256 84v92" />
-    <path d="M156 176l100 188 100-188" />
+    <path d="M308 104c-68 0-124 56-124 124s56 124 124 124" />
+    <path d="M246 352v102" />
+    <path d="M186 410h120" />
   </g>
 </svg>

@@ -11,6 +11,25 @@ import SagittariusIcon from "./symbols/Sagittarius.svg?url";
 import CapricornIcon from "./symbols/Capricorn.svg?url";
 import AquariusIcon from "./symbols/Aquarius.svg?url";
 import PiscesIcon from "./symbols/Pisces.svg?url";
+import SunIcon from "./symbols/Sun.svg?url";
+import MoonIcon from "./symbols/Moon.svg?url";
+import MercuryIcon from "./symbols/Mercury.svg?url";
+import VenusIcon from "./symbols/Venus.svg?url";
+import MarsIcon from "./symbols/Mars.svg?url";
+import JupiterIcon from "./symbols/Jupiter.svg?url";
+import SaturnIcon from "./symbols/Saturn.svg?url";
+import UranusIcon from "./symbols/Uranus.svg?url";
+import NeptuneIcon from "./symbols/Neptune.svg?url";
+import PlutoIcon from "./symbols/Pluto.svg?url";
+import ChironIcon from "./symbols/Chiron.svg?url";
+import JunoIcon from "./symbols/Juno.svg?url";
+import VestaIcon from "./symbols/Vesta.svg?url";
+import NorthNodeIcon from "./symbols/NorthNode.svg?url";
+import CeresIcon from "./symbols/Ceres.svg?url";
+import PallasIcon from "./symbols/Pallas.svg?url";
+import LilithIcon from "./symbols/Lilith.svg?url";
+import FortuneIcon from "./symbols/Fortune.svg?url";
+import VertexIcon from "./symbols/Vertex.svg?url";
 
 type AngleKey = "asc" | "mc" | "dsc" | "ic";
 type Classification = "planet" | "asteroid" | "mathematical_point" | "angle" | "hypothetical";
@@ -137,18 +156,18 @@ const ZODIAC_SYMBOLS: Record<string, string> = {
 };
 
 const ELEMENT_FILL: Record<string, string> = {
-  Aries: "#fde8e8",
-  Taurus: "#ecf6e9",
-  Gemini: "#e8f2fc",
-  Cancer: "#f2edf9",
-  Leo: "#fde8e8",
-  Virgo: "#ecf6e9",
-  Libra: "#e8f2fc",
-  Scorpio: "#f2edf9",
-  Sagittarius: "#fde8e8",
-  Capricorn: "#ecf6e9",
-  Aquarius: "#e8f2fc",
-  Pisces: "#f2edf9",
+  Aries: "#fbe8e1",
+  Taurus: "#e7f1e7",
+  Gemini: "#e6eef9",
+  Cancer: "#efe8f6",
+  Leo: "#fbe8e1",
+  Virgo: "#e7f1e7",
+  Libra: "#e6eef9",
+  Scorpio: "#efe8f6",
+  Sagittarius: "#fbe8e1",
+  Capricorn: "#e7f1e7",
+  Aquarius: "#e6eef9",
+  Pisces: "#efe8f6",
 };
 
 const SIGN_SEQUENCE = [
@@ -205,6 +224,30 @@ const BODY_GLYPH: Record<string, string> = {
   ic: "IC",
 };
 
+const BODY_ICON: Record<string, string> = {
+  sun: SunIcon,
+  moon: MoonIcon,
+  mercury: MercuryIcon,
+  venus: VenusIcon,
+  mars: MarsIcon,
+  jupiter: JupiterIcon,
+  saturn: SaturnIcon,
+  uranus: UranusIcon,
+  neptune: NeptuneIcon,
+  pluto: PlutoIcon,
+  north_node_true: NorthNodeIcon,
+  north_node_mean: NorthNodeIcon,
+  lilith_mean: LilithIcon,
+  lilith_true: LilithIcon,
+  chiron: ChironIcon,
+  ceres: CeresIcon,
+  pallas: PallasIcon,
+  juno: JunoIcon,
+  vesta: VestaIcon,
+  vertex: VertexIcon,
+  fortune: FortuneIcon,
+};
+
 const ASPECT_STYLE: Record<string, { stroke: string; width: number; dasharray?: string }> = {
   conjunction: { stroke: "#94a3b8", width: 1 },
   sextile: { stroke: "#3b82f6", width: 1.1 },
@@ -216,6 +259,10 @@ const ASPECT_STYLE: Record<string, { stroke: string; width: number; dasharray?: 
 
 const MAJOR_PLANETS = new Set(["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]);
 const DEEP_GRAY = "#475569";
+
+function isAsteroidLike(item: { classification: Classification } | undefined) {
+  return item?.classification === "asteroid";
+}
 
 function normalizeLon(lon: number) {
   let value = lon % 360;
@@ -433,15 +480,15 @@ export default function AdvancedAstroWheel({
   const TICK_LONG_R = outerR * (show64Key ? 0.865 : 0.966);
   const TICK_SHORT_R = outerR * (show64Key ? 0.875 : 0.976);
   const SIGN_OUTER_R = outerR * (show64Key ? 0.86 : 0.958);
-  const SIGN_INNER_R = outerR * (show64Key ? 0.73 : 0.81);
-  const PLANET_GLYPH_MAJOR_R = outerR * (show64Key ? 0.695 : 0.758);
-  const PLANET_GLYPH_MINOR_R = outerR * (show64Key ? 0.695 : 0.758);
-  const DEGREE_MAJOR_R = outerR * (show64Key ? 0.605 : 0.665);
-  const DEGREE_MINOR_R = outerR * (show64Key ? 0.605 : 0.665);
+  const SIGN_INNER_R = outerR * (show64Key ? 0.735 : 0.815);
+  const PLANET_GLYPH_MAJOR_R = outerR * (show64Key ? 0.688 : 0.75);
+  const PLANET_GLYPH_MINOR_R = outerR * (show64Key ? 0.672 : 0.726);
+  const DEGREE_MAJOR_R = outerR * (show64Key ? 0.598 : 0.652);
+  const DEGREE_MINOR_R = outerR * (show64Key ? 0.584 : 0.632);
   const GATE_LABEL_R = outerR * 0.842;
-  const INNER_CHART_R = outerR * (show64Key ? 0.495 : 0.525);
-  const HOUSE_LABEL_R = outerR * (show64Key ? 0.42 : 0.445);
-  const CENTER_DISC_R = outerR * 0.165;
+  const INNER_CHART_R = outerR * (show64Key ? 0.502 : 0.532);
+  const HOUSE_LABEL_R = outerR * (show64Key ? 0.425 : 0.448);
+  const CENTER_DISC_R = outerR * 0.162;
 
   const hexagramArcs = useMemo(() => {
     const parsed = parseHexagramCsv(hexagramCsvText);
@@ -471,6 +518,7 @@ export default function AdvancedAstroWheel({
         const a = bodyLookup.get(aspect.point_a);
         const b = bodyLookup.get(aspect.point_b);
         if (!a || !b) return null;
+        if (isAsteroidLike(a) || isAsteroidLike(b)) return null;
         return {
           ...aspect,
           p1: linePoint(center, aspectRadius, a.lon, anchorLon),
@@ -547,7 +595,7 @@ export default function AdvancedAstroWheel({
 
         {signArcs.map((arc) => (
           <g key={arc.sign}>
-            <path d={arc.path} fill={ELEMENT_FILL[arc.sign]} fillOpacity={0.45} stroke="none" />
+            <path d={arc.path} fill={ELEMENT_FILL[arc.sign]} fillOpacity={0.34} stroke="none" />
             <line
               x1={arc.dividerOuter.x}
               y1={arc.dividerOuter.y}
@@ -570,18 +618,34 @@ export default function AdvancedAstroWheel({
         <circle cx={center} cy={center} r={SIGN_INNER_R} fill="none" stroke={DEEP_GRAY} strokeWidth={1.8} />
 
         {[chart.angles.asc, chart.angles.mc, chart.angles.dsc, chart.angles.ic].map((angle) => {
-          const pos = linePoint(center, outerR * 0.555, angle.lon, anchorLon);
+          const labelPos = linePoint(center, outerR * 0.56, angle.lon, anchorLon);
+          const degreePos = linePoint(center, outerR * 0.615, angle.lon, anchorLon);
           const accent = DEEP_GRAY;
+          const degreeRotation = uprightRotation(180 - normalizeLon(angle.lon - anchorLon));
           return (
             <g key={angle.id}>
-              <text x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="middle" fontSize={size * 0.0115} fill={accent} fontWeight={700}>
+              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" fontSize={size * 0.0115} fill={accent} fontWeight={700}>
                 {BODY_GLYPH[angle.id]}
               </text>
+              {(angle.id === "asc" || angle.id === "mc") && (
+                <text
+                  x={degreePos.x}
+                  y={degreePos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={size * 0.014}
+                  fill="#1f3553"
+                  fontWeight={700}
+                  transform={`rotate(${degreeRotation} ${degreePos.x} ${degreePos.y})`}
+                >
+                  {formatDeg(angle.degree)}
+                </text>
+              )}
             </g>
           );
         })}
 
-        <circle cx={center} cy={center} r={INNER_CHART_R} fill="#fff" fillOpacity={0.97} stroke="#edf2f7" strokeWidth={1.1} />
+        <circle cx={center} cy={center} r={INNER_CHART_R} fill="#fff" fillOpacity={0.985} stroke="#edf2f7" strokeWidth={1.1} />
         {aspectLines.map((aspect) => {
           const style = ASPECT_STYLE[aspect.aspect_type] || { stroke: "#94a3b8", width: 1 };
           return (
@@ -618,22 +682,41 @@ export default function AdvancedAstroWheel({
           };
           const gateRotation = uprightRotation(180 - normalizeLon(point.lon - anchorLon));
           const glyph = BODY_GLYPH[point.id] || point.label.slice(0, 2);
+          const glyphIcon = BODY_ICON[point.id];
           const gateLine = findHexagramKeyForLon(hexagramArcs, point.lon);
-          const glyphFill = point.id === "sun" || point.id === "moon" ? "#7c3aed" : "#0f172a";
-          const glyphFontSize = glyph.length > 1 ? size * 0.0165 : size * 0.019;
+          const glyphFill = isMajorPlanet ? "#0f172a" : "#334155";
+          const glyphFontSize = glyph.length > 1 ? size * 0.0135 : size * 0.017;
+          const iconSize = point.id === "sun" ? size * 0.036 : isMajorPlanet ? size * 0.031 : size * 0.022;
+          const retroOffset = isMajorPlanet ? size * 0.015 : size * 0.011;
 
           return (
             <g key={point.id}>
-              <text x={glyphPos.x} y={glyphPos.y} textAnchor="middle" dominantBaseline="middle" fontSize={glyphFontSize} fill={glyphFill} fontWeight={700}>
-                {glyph}
-              </text>
+              {glyphIcon ? (
+                <>
+                  {isMajorPlanet && (
+                    <circle cx={glyphPos.x} cy={glyphPos.y} r={iconSize * 0.64} fill="#ffffff" fillOpacity={0.94} stroke="#e2e8f0" strokeWidth={0.9} />
+                  )}
+                  <image
+                    href={glyphIcon}
+                    x={glyphPos.x - iconSize / 2}
+                    y={glyphPos.y - iconSize / 2}
+                    width={iconSize}
+                    height={iconSize}
+                    preserveAspectRatio="xMidYMid meet"
+                  />
+                </>
+              ) : (
+                <text x={glyphPos.x} y={glyphPos.y} textAnchor="middle" dominantBaseline="middle" fontSize={glyphFontSize} fill={glyphFill} fontWeight={700}>
+                  {glyph}
+                </text>
+              )}
               <text
                 x={degreePos.x}
                 y={degreePos.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize={isMajorPlanet ? size * 0.0165 : size * 0.0125}
-                fill="#1f3553"
+                fontSize={isMajorPlanet ? size * 0.016 : size * 0.0118}
+                fill={isMajorPlanet ? "#10243f" : "#334155"}
                 fontWeight={700}
                 transform={`rotate(${rotation} ${degreePos.x} ${degreePos.y})`}
               >
@@ -654,7 +737,7 @@ export default function AdvancedAstroWheel({
                 </text>
               )}
               {point.retrograde && (
-                <text x={degreePos.x + size * 0.014} y={degreePos.y} textAnchor="start" dominantBaseline="middle" fontSize={size * 0.0115} fill="#dc2626" fontWeight={700}>
+                <text x={degreePos.x + retroOffset} y={degreePos.y} textAnchor="start" dominantBaseline="middle" fontSize={size * 0.0105} fill="#dc2626" fontWeight={700}>
                   R
                 </text>
               )}
