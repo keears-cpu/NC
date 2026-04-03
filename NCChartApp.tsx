@@ -218,6 +218,63 @@ function signOfLon(lon: number) {
   return signs[Math.floor(normalizeLon(lon) / 30)];
 }
 
+function formatOrdinal(value: number) {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${value}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${value}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${value}rd`;
+  return `${value}th`;
+}
+
+function aspectLabel(aspectType: string) {
+  return aspectType.charAt(0).toUpperCase() + aspectType.slice(1);
+}
+
+function markdownPointLabel(item: Body | Point | AnglePoint) {
+  const overrides: Record<string, string> = {
+    north_node_true: "North Node",
+    north_node_mean: "North Node",
+    lilith_mean: "Lilith",
+    lilith_true: "Lilith",
+    fortune: "Fortune",
+    asc: "ASC",
+    mc: "MC",
+    dsc: "DSC",
+    ic: "IC",
+  };
+  return overrides[item.id] || item.label;
+}
+
+function formatMarkdownPosition(item: Body | Point) {
+  const segments = [`${markdownPointLabel(item)} in ${item.sign} ${formatDeg(item.degree)}`];
+  if (item.retrograde) segments.push("Retrograde");
+  if (item.house) segments.push(`in ${formatOrdinal(item.house)} House`);
+  return segments.join(", ");
+}
+
+function buildChartMarkdown(chart: NatalChartRecord) {
+  const lookup = new Map<string, string>();
+  [...chart.bodies, ...chart.points].forEach((item) => {
+    lookup.set(item.id, markdownPointLabel(item));
+  });
+  lookup.set("asc", "ASC");
+  lookup.set("mc", "MC");
+  lookup.set("dsc", "DSC");
+  lookup.set("ic", "IC");
+
+  const positions = [...chart.bodies, ...chart.points].map(formatMarkdownPosition);
+  const angles = [chart.angles.asc, chart.angles.mc].map((angle) => `${markdownPointLabel(angle)} in ${angle.sign} ${formatDeg(angle.degree)}`);
+  const houses = chart.houses.map((house) => `${formatOrdinal(house.house)} House in ${house.sign} ${formatDeg(house.degree)}`);
+  const aspects = chart.aspects.map((aspect) => {
+    const pointA = lookup.get(aspect.point_a) || aspect.point_a;
+    const pointB = lookup.get(aspect.point_b) || aspect.point_b;
+    return `${pointA} ${aspectLabel(aspect.aspect_type)} ${pointB} (Orb: ${aspect.orb_text})`;
+  });
+
+  return [...positions, "", ...angles, "", ...houses, "", ...aspects].join("\n");
+}
+
 function normalizeText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -517,6 +574,7 @@ export default function AstroChartExtractorPreview() {
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [show64Key, setShow64Key] = useState(false);
   const [jsonPanelOpen, setJsonPanelOpen] = useState(false);
+  const [markdownCopyMessage, setMarkdownCopyMessage] = useState("");
   const cityBoxRef = useRef<HTMLDivElement | null>(null);
   const chartCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -620,6 +678,7 @@ export default function AstroChartExtractorPreview() {
     () => filteredSavedLeadGroups.reduce((sum, group) => sum + group.leads.length, 0),
     [filteredSavedLeadGroups]
   );
+  const chartMarkdown = useMemo(() => buildChartMarkdown(chart), [chart]);
   const publicVisiblePoints = useMemo(
     () => visiblePoints.filter((point) => ["north_node_true", "fortune", "vertex"].includes(point.id)).slice(0, 3),
     [visiblePoints]
@@ -686,6 +745,12 @@ export default function AstroChartExtractorPreview() {
       cancelled = true;
     };
   }, [isInternalView]);
+
+  useEffect(() => {
+    if (!markdownCopyMessage) return;
+    const timeout = window.setTimeout(() => setMarkdownCopyMessage(""), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [markdownCopyMessage]);
 
   useEffect(() => {
     const q = cityQuery.trim();
@@ -928,6 +993,15 @@ export default function AstroChartExtractorPreview() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleCopyChartMarkdown() {
+    try {
+      await navigator.clipboard.writeText(chartMarkdown);
+      setMarkdownCopyMessage("복사 완료");
+    } catch {
+      setMarkdownCopyMessage("복사 실패");
+    }
   }
 
   return (
@@ -1353,6 +1427,35 @@ export default function AstroChartExtractorPreview() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-5 shadow-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Copy-ready chart text</h3>
+                    <div className="mt-1 text-sm text-slate-500">
+                      선택한 이름과 생일 기준으로 바로 복붙할 수 있는 텍스트입니다.
+                    </div>
+                    <div className="mt-2 text-xs text-slate-400">
+                      {chart.input.person_name || "이름 없음"} · {chart.input.birth_date} {chart.input.birth_time_local}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {markdownCopyMessage && <span className="text-sm text-slate-500">{markdownCopyMessage}</span>}
+                    <button
+                      type="button"
+                      onClick={() => { void handleCopyChartMarkdown(); }}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                    >
+                      텍스트 복사
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  readOnly
+                  value={chartMarkdown}
+                  className="mt-4 h-[360px] w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 font-mono text-[13px] leading-6 text-slate-700 outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
