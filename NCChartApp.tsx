@@ -516,6 +516,7 @@ export default function AstroChartExtractorPreview() {
   const [adminSearchQuery, setAdminSearchQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [show64Key, setShow64Key] = useState(false);
+  const [jsonPanelOpen, setJsonPanelOpen] = useState(false);
   const cityBoxRef = useRef<HTMLDivElement | null>(null);
   const chartCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -618,6 +619,33 @@ export default function AstroChartExtractorPreview() {
   const visibleSavedLeadCount = useMemo(
     () => filteredSavedLeadGroups.reduce((sum, group) => sum + group.leads.length, 0),
     [filteredSavedLeadGroups]
+  );
+  const publicVisiblePoints = useMemo(
+    () => visiblePoints.filter((point) => ["north_node_true", "fortune", "vertex"].includes(point.id)).slice(0, 3),
+    [visiblePoints]
+  );
+  const sunBody = useMemo(() => chart.bodies.find((b) => b.id === "sun"), [chart]);
+  const moonBody = useMemo(() => chart.bodies.find((b) => b.id === "moon"), [chart]);
+  const publicHighlights = useMemo(
+    () => [
+      `${sunBody?.label || "Sun"} ${sunBody ? `${zodiacSymbols[sunBody.sign]} ${sunBody.formatted.split(" ")[1]}` : ""}`.trim(),
+      `${moonBody?.label || "Moon"} ${moonBody ? `${zodiacSymbols[moonBody.sign]} ${moonBody.formatted.split(" ")[1]}` : ""}`.trim(),
+      `ASC ${zodiacSymbols[chart.angles.asc.sign]} ${formatDeg(chart.angles.asc.degree)}`,
+    ],
+    [chart, moonBody, sunBody]
+  );
+  const cityContextLabel = useMemo(() => {
+    const parts = [form.birth_place_name, form.timezone, form.country_code].filter(Boolean);
+    return parts.join(" · ");
+  }, [form.birth_place_name, form.timezone, form.country_code]);
+  const internalSummary = useMemo(
+    () => ({
+      warnings: chart.metadata.warnings?.length || 0,
+      optionalMissing: chart.availability.soft_missing.length,
+      aspects: chart.aspects.length,
+      points: visiblePoints.length,
+    }),
+    [chart, visiblePoints]
   );
 
   useEffect(() => {
@@ -917,6 +945,11 @@ export default function AstroChartExtractorPreview() {
               <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
                 네이탈 차트는 태어난 순간의 하늘 배치를 바탕으로 성향, 관계, 재능, 삶의 흐름을 읽어보는 기본 차트입니다. 출생 정보를 입력하면 차트를 바로 확인할 수 있습니다.
               </p>
+              <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">즉시 계산</span>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">출생지 자동 보정</span>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">차트 저장</span>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {workspaceMode === "internal" && (
@@ -962,10 +995,20 @@ export default function AstroChartExtractorPreview() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
               <div className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
                 <div>
-                  <h2 className="text-2xl font-semibold">무료 차트 신청</h2>
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Step 1</div>
+                  <h2 className="mt-2 text-2xl font-semibold">기본 정보 입력</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    생년월일, 출생 시간, 지역, 이름, 연락처, 이메일을 입력하면 차트를 생성할 수 있습니다.
+                    이름과 연락처를 남기고 출생 정보를 입력하면, 오른쪽에서 바로 네이탈 차트를 확인할 수 있습니다.
                   </p>
+                </div>
+
+                <div className="mt-5 rounded-[1.5rem] border border-amber-100 bg-amber-50/70 px-4 py-4 text-sm text-amber-900">
+                  <div className="font-semibold">이 화면에서 바로 받는 것</div>
+                  <div className="mt-2 space-y-1 text-[13px] leading-6 text-amber-900/80">
+                    <div>차트 휠과 핵심 포지션이 즉시 생성됩니다.</div>
+                    <div>도시를 고르면 시간대와 국가 코드도 같이 맞춰집니다.</div>
+                    <div>신청 정보는 저장되어 내부 검토 화면으로 이어집니다.</div>
+                  </div>
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
@@ -1029,15 +1072,30 @@ export default function AstroChartExtractorPreview() {
                     <div className="text-xs text-slate-500">한글/영문 도시명 모두 검색하고, 한국 도시는 우선 제안합니다.</div>
                   </div>
 
-                  <label className="space-y-1">
-                    <span className="text-slate-600">Timezone</span>
-                    <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.timezone} onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))} />
-                  </label>
+                  <div className="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-medium text-slate-800">자동 설정된 위치 정보</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          도시 선택 시 시간대와 국가 코드가 자동으로 채워집니다. 필요할 때만 수정하세요.
+                        </div>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                        {cityContextLabel || "위치 정보 없음"}
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <label className="space-y-1">
+                        <span className="text-slate-600">Timezone</span>
+                        <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3" value={form.timezone} onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))} />
+                      </label>
 
-                  <label className="space-y-1">
-                    <span className="text-slate-600">국가 코드</span>
-                    <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.country_code} onChange={(e) => setForm((prev) => ({ ...prev, country_code: e.target.value }))} />
-                  </label>
+                      <label className="space-y-1">
+                        <span className="text-slate-600">국가 코드</span>
+                        <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3" value={form.country_code} onChange={(e) => setForm((prev) => ({ ...prev, country_code: e.target.value }))} />
+                      </label>
+                    </div>
+                  </div>
                 </div>
                 <label className="mt-6 flex items-start gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
                   <input
@@ -1065,9 +1123,11 @@ export default function AstroChartExtractorPreview() {
               <div className="space-y-6">
                 <div ref={chartCardRef} className="rounded-[2rem] border border-white/70 bg-white/95 p-5 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-2xl font-semibold">Your Horoscope Chart</h2>
-                  </div>
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Step 2</div>
+                      <h2 className="mt-2 text-2xl font-semibold">Your Horoscope Chart</h2>
+                      <p className="mt-1 text-sm text-slate-500">입력한 출생 정보 기준으로 핵심 포지션과 차트 휠을 바로 확인합니다.</p>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700">
                         <input
@@ -1076,7 +1136,7 @@ export default function AstroChartExtractorPreview() {
                           checked={show64Key}
                           onChange={(e) => setShow64Key(e.target.checked)}
                         />
-                        64key 보기
+                        고급 64key 보기
                       </label>
                       <button onClick={handleDownloadChart} disabled={!hasChartResult} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-50">
                         다운로드
@@ -1093,21 +1153,36 @@ export default function AstroChartExtractorPreview() {
 
                   <div className="mt-4 grid gap-3 md:grid-cols-3">
                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Sun / Moon / ASC</div>
+                      <div className="text-xs uppercase tracking-[0.22em] text-slate-400">핵심 포인트</div>
                       <div className="mt-2 text-sm font-medium leading-6">
-                        ☉ {zodiacSymbols[chart.bodies.find((b) => b.id === "sun")?.sign || "Sagittarius"]} {chart.bodies.find((b) => b.id === "sun")?.formatted.split(" ")[1]}<br />
-                        ☽ {zodiacSymbols[chart.bodies.find((b) => b.id === "moon")?.sign || "Leo"]} {chart.bodies.find((b) => b.id === "moon")?.formatted.split(" ")[1]}<br />
-                        ASC {zodiacSymbols[chart.angles.asc.sign]} {formatDeg(chart.angles.asc.degree)}
+                        {publicHighlights.map((item) => (
+                          <div key={item}>{item}</div>
+                        ))}
                       </div>
                     </div>
                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
                       <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Birth Place</div>
                       <div className="mt-2 text-sm font-medium leading-6">{chart.input.birth_place_name}</div>
+                      <div className="mt-1 text-xs text-slate-500">{chart.input.birth_date} · {chart.input.birth_time_local}</div>
                     </div>
                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Email Flow</div>
-                      <div className="mt-2 text-sm font-medium leading-6">{form.email || "이메일 미입력"}</div>
+                      <div className="text-xs uppercase tracking-[0.22em] text-slate-400">추가로 볼 포인트</div>
+                      <div className="mt-2 space-y-1 text-sm font-medium leading-6">
+                        {publicVisiblePoints.length ? (
+                          publicVisiblePoints.map((point) => (
+                            <div key={point.id} className="flex items-center justify-between gap-3">
+                              <span>{point.label}</span>
+                              <span className="text-slate-500">{zodiacSymbols[point.sign]} {point.formatted.split(" ")[1]}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div>핵심 포인트가 여기에 표시됩니다.</div>
+                        )}
+                      </div>
                     </div>
+                  </div>
+                  <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
+                    64key 보기는 기본 차트 해석보다 한 단계 더 깊은 비교용 보기입니다. 먼저 기본 휠을 확인한 뒤 필요할 때만 켜는 흐름을 권장합니다.
                   </div>
                 </div>
 
@@ -1232,7 +1307,35 @@ export default function AstroChartExtractorPreview() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                <div className="mt-5 grid gap-4 lg:grid-cols-4">
+                  <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 px-4 py-4">
+                    <div className="text-sm text-emerald-700">검토 상태</div>
+                    <div className="mt-2 text-2xl font-semibold text-emerald-950">{chart.availability.core_complete ? "Ready" : "Check"}</div>
+                    <div className="mt-2 text-xs leading-5 text-emerald-800/80">
+                      {chart.availability.core_complete ? "핵심 천체와 각도가 계산되어 바로 검토할 수 있습니다." : "핵심 결과에 누락이 있어 재확인이 필요합니다."}
+                    </div>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="text-sm text-slate-500">경고 / 선택 누락</div>
+                    <div className="mt-2 text-2xl font-semibold text-slate-900">{internalSummary.warnings} / {internalSummary.optionalMissing}</div>
+                    <div className="mt-2 text-xs leading-5 text-slate-500">
+                      warnings {internalSummary.warnings}, optional missing {internalSummary.optionalMissing}
+                    </div>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="text-sm text-slate-500">표시 포인트</div>
+                    <div className="mt-2 text-2xl font-semibold text-slate-900">{internalSummary.points}</div>
+                    <div className="mt-2 text-xs leading-5 text-slate-500">
+                      aspects {internalSummary.aspects}개와 함께 점검 중입니다.
+                    </div>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="text-sm text-slate-500">저장 소스</div>
+                    <div className="mt-2 text-sm font-medium leading-6 text-slate-900">{internalStatusDetail || status}</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-3">
                   <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
                     <div className="text-sm text-slate-500">저장 명단</div>
                     <select value={selectedLeadId} onChange={(e) => loadSavedLead(e.target.value)} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-3 py-3">
@@ -1245,12 +1348,16 @@ export default function AstroChartExtractorPreview() {
                     </select>
                   </div>
                   <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                    <div className="text-sm text-slate-500">상태</div>
+                    <div className="text-sm text-slate-500">현재 상태</div>
                     <div className="mt-3 text-sm font-medium leading-6">{status}</div>
                   </div>
                   <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                    <div className="text-sm text-slate-500">내부 상태</div>
-                    <div className="mt-3 text-sm font-medium leading-6">{internalStatusDetail || "No internal detail yet"}</div>
+                    <div className="text-sm text-slate-500">다음 액션</div>
+                    <div className="mt-3 text-sm font-medium leading-6">
+                      {internalSummary.warnings || internalSummary.optionalMissing
+                        ? "Warnings와 optional missing을 먼저 확인한 뒤 차트를 검토하세요."
+                        : "행성표와 aspect 표를 빠르게 확인한 뒤 저장 상태만 마무리하면 됩니다."}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1358,11 +1465,28 @@ export default function AstroChartExtractorPreview() {
                 </div>
 
                 <div className="xl:col-span-1 bg-white/95 rounded-3xl shadow-sm p-5 border border-white/60">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Raw JSON</h3>
-                    <span className="text-xs px-2 py-1 rounded-full bg-slate-100">extract</span>
-                  </div>
-                  <JsonBlock value={chart} />
+                  <button
+                    type="button"
+                    onClick={() => setJsonPanelOpen((prev) => !prev)}
+                    className="flex w-full items-center justify-between text-left"
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold">Raw JSON</h3>
+                      <div className="mt-1 text-sm text-slate-500">필요할 때만 여는 디버그용 상세 데이터</div>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                      {jsonPanelOpen ? "접기" : "열기"}
+                    </span>
+                  </button>
+                  {jsonPanelOpen ? (
+                    <div className="mt-4">
+                      <JsonBlock value={chart} />
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
+                      운영 검토에서는 위 요약 카드와 표를 먼저 보고, 필요할 때만 JSON을 확인하는 흐름을 권장합니다.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

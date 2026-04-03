@@ -1,0 +1,80 @@
+{
+  "cases": [
+    {
+      "case_id": "SEOUL_SUPP_001",
+      "metadata": {
+        "fixture_status": "supplemental",
+        "city": "Seoul",
+        "country": "KR",
+        "timezone_hint": "Asia/Seoul",
+        "house_system_confidence": "needs_verification"
+      },
+      "raw_fixture": {
+        "person_name": "Seoul Supplemental 1",
+        "local_label": "서울 보조 케이스 1",
+        "birth_date": "1992-04-12",
+        "birth_time_local": "06:40",
+        "birth_place_name": "Seoul, South Korea",
+        "positions": {
+          "sun": "Aries 22°00’ h1",
+          "moon": "Cancer 14°00’ h4",
+          "north_node": "Capricorn 3°00’ h10",
+          "asc": "Aries 0°00’",
+          "mc": "Capricorn 0°00’"
+        },
+        "house_positions": [
+          { "house": 1, "sign": "Aries", "degree_text": "0°00’" },
+          { "house": 2, "sign": "Taurus", "degree_text": "0°00’" },
+          { "house": 3, "sign": "Gemini", "degree_text": "0°00’" },
+          { "house": 4, "sign": "Cancer", "degree_text": "0°00’" },
+          { "house": 5, "sign": "Leo", "degree_text": "0°00’" },
+          { "house": 6, "sign": "Virgo", "degree_text": "0°00’" },
+          { "house": 7, "sign": "Libra", "degree_text": "0°00’" },
+          { "house": 8, "sign": "Scorpio", "degree_text": "0°00’" },
+          { "house": 9, "sign": "Sagittarius", "degree_text": "0°00’" },
+          { "house": 10, "sign": "Capricorn", "degree_text": "0°00’" },
+          { "house": 11, "sign": "Aquarius", "degree_text": "0°00’" },
+          { "house": 12, "sign": "Pisces", "degree_text": "0°00’" }
+        ]
+      }
+    },
+    {
+      "case_id": "SEOUL_SUPP_002",
+      "metadata": {
+        "fixture_status": "supplemental",
+        "city": "Seoul",
+        "country": "KR",
+        "timezone_hint": "Asia/Seoul",
+        "house_system_confidence": "needs_verification"
+      },
+      "raw_fixture": {
+        "person_name": "Seoul Supplemental 2",
+        "local_label": "서울 보조 케이스 2",
+        "birth_date": "2003-11-03",
+        "birth_time_local": "21:15",
+        "birth_place_name": "Seoul, South Korea",
+        "positions": {
+          "sun": "Scorpio 10°00’ h8",
+          "moon": "Aquarius 5°00’ h11",
+          "north_node": "Taurus 12°00’ h2",
+          "asc": "Cancer 0°00’",
+          "mc": "Aries 0°00’"
+        },
+        "house_positions": [
+          { "house": 1, "sign": "Cancer", "degree_text": "0°00’" },
+          { "house": 2, "sign": "Leo", "degree_text": "0°00’" },
+          { "house": 3, "sign": "Virgo", "degree_text": "0°00’" },
+          { "house": 4, "sign": "Libra", "degree_text": "0°00’" },
+          { "house": 5, "sign": "Scorpio", "degree_text": "0°00’" },
+          { "house": 6, "sign": "Sagittarius", "degree_text": "0°00’" },
+          { "house": 7, "sign": "Capricorn", "degree_text": "0°00’" },
+          { "house": 8, "sign": "Aquarius", "degree_text": "0°00’" },
+          { "house": 9, "sign": "Pisces", "degree_text": "0°00’" },
+          { "house": 10, "sign": "Aries", "degree_text": "0°00’" },
+          { "house": 11, "sign": "Taurus", "degree_text": "0°00’" },
+          { "house": 12, "sign": "Gemini", "degree_text": "0°00’" }
+        ]
+      }
+    }
+  ]
+}
