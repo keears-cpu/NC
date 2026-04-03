@@ -499,7 +499,7 @@ export default function AstroChartExtractorPreview() {
   });
   const [chart, setChart] = useState<NatalChartRecord>(sampleChart);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState("실제 계산이 가능한 차트 앱입니다. 정보를 입력하면 즉시 네이탈 차트를 계산합니다.");
+  const [status, setStatus] = useState("");
   const [internalStatusDetail, setInternalStatusDetail] = useState("");
   const [cityQuery, setCityQuery] = useState("Seoul, South Korea");
   const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
@@ -1002,15 +1002,6 @@ export default function AstroChartExtractorPreview() {
                   </p>
                 </div>
 
-                <div className="mt-5 rounded-[1.5rem] border border-amber-100 bg-amber-50/70 px-4 py-4 text-sm text-amber-900">
-                  <div className="font-semibold">이 화면에서 바로 받는 것</div>
-                  <div className="mt-2 space-y-1 text-[13px] leading-6 text-amber-900/80">
-                    <div>차트 휠과 핵심 포지션이 즉시 생성됩니다.</div>
-                    <div>도시를 고르면 시간대와 국가 코드도 같이 맞춰집니다.</div>
-                    <div>신청 정보는 저장되어 내부 검토 화면으로 이어집니다.</div>
-                  </div>
-                </div>
-
                 <div className="mt-6 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                   <label className="space-y-1 md:col-span-2">
                     <span className="text-slate-600">이름</span>
@@ -1115,9 +1106,11 @@ export default function AstroChartExtractorPreview() {
                   </button>
                 </div>
 
-                <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                  {status}
-                </div>
+                {status && (
+                  <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    {status}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">

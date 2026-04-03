@@ -608,9 +608,15 @@ export default function AdvancedAstroWheel({
           const shiftedLon = normalizeLon(point.lon + placement.angleOffset);
           const glyphPos = linePoint(center, glyphRadius, shiftedLon, anchorLon);
           const degreePos = linePoint(center, degreeRadius, shiftedLon, anchorLon);
-          const gatePos = linePoint(center, gateRadius, shiftedLon, anchorLon);
           const rawRotation = 180 - normalizeLon(shiftedLon - anchorLon);
           const rotation = uprightRotation(rawRotation);
+          const gateAnchor = linePoint(center, gateRadius, point.lon, anchorLon);
+          const gateTangent = ((90 - normalizeLon(point.lon - anchorLon)) * Math.PI) / 180;
+          const gatePos = {
+            x: gateAnchor.x + Math.cos(gateTangent) * placement.angleOffset * 0.85,
+            y: gateAnchor.y - Math.sin(gateTangent) * placement.angleOffset * 0.85,
+          };
+          const gateRotation = uprightRotation(180 - normalizeLon(point.lon - anchorLon));
           const glyph = BODY_GLYPH[point.id] || point.label.slice(0, 2);
           const gateLine = findHexagramKeyForLon(hexagramArcs, point.lon);
           const glyphFill = point.id === "sun" || point.id === "moon" ? "#7c3aed" : "#0f172a";
@@ -642,7 +648,7 @@ export default function AdvancedAstroWheel({
                   fontSize={isMajorPlanet ? size * 0.0115 : size * 0.0095}
                   fill="#7c3aed"
                   fontWeight={600}
-                  transform={`rotate(${rotation} ${gatePos.x} ${gatePos.y})`}
+                  transform={`rotate(${gateRotation} ${gatePos.x} ${gatePos.y})`}
                 >
                   {gateLine}
                 </text>
