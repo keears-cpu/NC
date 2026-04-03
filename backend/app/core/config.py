@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 
 DEFAULT_GOOGLE_APPS_SCRIPT_URL = (
-    "https://script.google.com/macros/s/AKfycbzYFr7_0T5p7AZv-SsKTdWQ7qOuh4rxbmdJrwos1mqzUTxSMvUPoiowq1F1sqMtnpd2/exec"
+    "https://script.google.com/macros/s/AKfycbzG8g6-l-y8uf9OZ3zxlK74MgrrtLOWsHkI2R6ugGHpbGJTEdGMbYT5XHZjhswiXWjG/exec"
 )
 
 
