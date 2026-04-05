@@ -644,7 +644,7 @@ export default function AstroChartExtractorPreview() {
   const [cityLoading, setCityLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("public");
-  const [hasChartResult, setHasChartResult] = useState(true);
+  const [hasChartResult, setHasChartResult] = useState(false);
   const [accessPanelOpen, setAccessPanelOpen] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [accessMessage, setAccessMessage] = useState("");
@@ -1143,9 +1143,8 @@ export default function AstroChartExtractorPreview() {
         setInternalStatusDetail(data.storage?.message || "storage not configured");
       }
     } catch (e: any) {
-      setHasChartResult(true);
-      persistLead(sampleChart);
-      setStatus("실제 계산 응답을 받지 못해 기본 차트를 표시합니다.");
+      setHasChartResult(false);
+      setStatus("아직 새로운 차트 해석을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       setInternalStatusDetail(e?.message || "backend unavailable");
     } finally {
       setLoading(false);
@@ -1422,23 +1421,25 @@ export default function AstroChartExtractorPreview() {
               </div>
             </div>
 
-            <div className="mt-10 rounded-[2rem] border border-[rgba(120,137,128,0.10)] bg-transparent p-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Short Reading</div>
-              <div className="mt-5 max-w-5xl text-[20px] leading-[1.95] text-slate-600 md:text-[25px]">
-                {publicBriefReadingPayload.intro}
+            {hasChartResult && (
+              <div className="mt-10 rounded-[2rem] border border-[rgba(120,137,128,0.10)] bg-transparent p-2">
+                <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Short Reading</div>
+                <div className="mt-5 max-w-5xl text-[20px] leading-[1.95] text-slate-600 md:text-[25px]">
+                  {publicBriefReadingPayload.intro}
+                </div>
+                <div className="mt-4 max-w-5xl text-[20px] leading-[1.95] text-slate-700 md:text-[25px]">
+                  {publicBriefReading.map((item) => (
+                    <p key={item.key} className="m-0">
+                      <span className={`font-semibold ${item.tone}`}>{item.lead}</span>
+                      {item.text}
+                    </p>
+                  ))}
+                </div>
+                <div className="mt-6 max-w-5xl text-[20px] font-medium leading-[1.9] text-slate-900 md:text-[25px]">
+                  {publicBriefReadingPayload.outro}
+                </div>
               </div>
-              <div className="mt-4 max-w-5xl text-[20px] leading-[1.95] text-slate-700 md:text-[25px]">
-                {publicBriefReading.map((item) => (
-                  <p key={item.key} className="m-0">
-                    <span className={`font-semibold ${item.tone}`}>{item.lead}</span>
-                    {item.text}
-                  </p>
-                ))}
-              </div>
-              <div className="mt-6 max-w-5xl text-[20px] font-medium leading-[1.9] text-slate-900 md:text-[25px]">
-                {publicBriefReadingPayload.outro}
-              </div>
-            </div>
+            )}
           </>
         ) : (
           <>
