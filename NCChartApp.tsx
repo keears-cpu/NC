@@ -1187,43 +1187,38 @@ export default function AstroChartExtractorPreview() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#fffaf1_0%,#f7f7fb_48%,#eef4ff_100%)] text-slate-900 p-4 md:p-6">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_14%_16%,rgba(183,211,196,0.36),transparent_22%),radial-gradient(circle_at_84%_14%,rgba(234,198,163,0.34),transparent_24%),linear-gradient(180deg,#f6f2ea_0%,#eef3ed_44%,#f5efe6_100%)] text-slate-900 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+        <div className="rounded-[2.25rem] border border-[rgba(120,137,128,0.14)] bg-[rgba(255,251,245,0.84)] p-6 shadow-[0_24px_80px_rgba(65,72,82,0.10)] backdrop-blur">
           <div className="flex items-start justify-between gap-4">
-            <div className="max-w-3xl">
-              <div className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.25em] text-amber-700">
+            <div className="mx-auto max-w-4xl text-center">
+              <div className="inline-flex rounded-full border border-[rgba(190,123,71,0.20)] bg-[rgba(255,248,240,0.88)] px-3 py-1 text-xs font-medium uppercase tracking-[0.25em] text-[#9a6540]">
                 natal.kr
               </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+              <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-900 md:text-6xl">
                 당신의 차트를, 읽을 수 있는 보고서로.
               </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+              <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-xl">
                 출생 데이터를 바탕으로 차트를 계산하고, 먼저 호로스코프 휠을 확인할 수 있도록 구성했습니다. 이 화면은 차트 계산과 기본 확인에 집중하고, 보고서 안내와 운영 흐름은 별도 페이지에서 이어집니다.
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <a href="#apply" className="rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow transition hover:opacity-95">
-                  차트 신청하기
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <a href="#apply" className="rounded-full border border-[rgba(124,141,132,0.14)] bg-[rgba(255,255,255,0.82)] px-6 py-3 text-sm font-medium text-slate-800 shadow-[0_12px_28px_rgba(84,90,99,0.08)] transition hover:-translate-y-[1px]">
+                  내 네이탈 차트 확인하기
                 </a>
-              </div>
-              <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">기본 입력</span>
-                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">호로스코프 휠</span>
-                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">핵심 포인트 안내</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {workspaceMode === "internal" && (
                 <button
                   onClick={() => setWorkspaceMode("public")}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                  className="rounded-full border border-[rgba(124,141,132,0.14)] bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-[rgba(190,123,71,0.24)] hover:text-slate-900"
                 >
                   Public 보기
                 </button>
               )}
               <button
                 onClick={() => setAccessPanelOpen((prev) => !prev)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(124,141,132,0.14)] bg-white text-slate-700 shadow-sm transition hover:border-[rgba(190,123,71,0.24)] hover:text-slate-900"
                 aria-label="관리 화면 열기"
               >
                 <span className="text-xl leading-none">⚙</span>
@@ -1253,17 +1248,17 @@ export default function AstroChartExtractorPreview() {
 
         {workspaceMode === "public" ? (
           <>
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
               <div className="space-y-6">
-                <div ref={chartCardRef} className="rounded-[2rem] border border-white/70 bg-white/95 p-5 shadow-sm">
+                <div ref={chartCardRef} className="rounded-[2.1rem] border border-[rgba(120,137,128,0.14)] bg-[rgba(255,252,247,0.88)] p-6 shadow-[0_24px_60px_rgba(65,72,82,0.08)]">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Horoscope</div>
-                      <h2 className="mt-2 text-2xl font-semibold">Your Horoscope Chart</h2>
-                      <p className="mt-1 text-sm text-slate-500">입력한 출생 정보 기준으로 호로스코프 휠과 핵심 위치를 함께 확인합니다.</p>
+                      <h2 className="mt-2 text-3xl font-semibold">Your Horoscope Chart</h2>
+                      <p className="mt-2 text-sm leading-7 text-slate-500">입력한 출생 정보 기준으로 호로스코프 휠과 핵심 위치를 함께 확인합니다.</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+                      <label className="flex items-center gap-2 rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white px-3 py-2 text-sm font-medium text-slate-700">
                         <input
                           type="checkbox"
                           className="h-4 w-4 accent-slate-900"
@@ -1272,30 +1267,30 @@ export default function AstroChartExtractorPreview() {
                         />
                         고급 64key 보기
                       </label>
-                      <button onClick={handleDownloadChart} disabled={!hasChartResult} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-50">
+                      <button onClick={handleDownloadChart} disabled={!hasChartResult} className="rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-50">
                         다운로드
                       </button>
 
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-[2rem] border border-stone-200 bg-[radial-gradient(circle_at_center,#ffffff_0%,#f8fafc_52%,#f3eadc_100%)] p-4">
+                  <div className="mt-6 rounded-[2rem] border border-[rgba(142,156,147,0.16)] bg-[radial-gradient(circle_at_center,#ffffff_0%,#f7f3eb_54%,#ebf1ea_100%)] p-4">
                     <div className="mx-auto aspect-square max-w-[880px]">
                       <NCWheel chart={chart} size={880} hexagramCsvText={hexagramCsvText} show64Key={show64Key} className="h-full w-full" />
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
+                  <div className="mt-5 rounded-[1.5rem] border border-dashed border-[rgba(142,156,147,0.18)] bg-[rgba(255,255,255,0.72)] px-4 py-4 text-sm leading-7 text-slate-500">
                     64key 보기는 기본 차트 해석보다 한 단계 더 깊은 비교용 보기입니다. 먼저 기본 휠을 확인한 뒤 필요할 때만 켜는 흐름을 권장합니다.
                   </div>
                 </div>
               </div>
 
-              <div id="apply" className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
+              <div id="apply" className="rounded-[2.1rem] border border-[rgba(120,137,128,0.14)] bg-[rgba(255,252,247,0.86)] p-6 shadow-[0_24px_60px_rgba(65,72,82,0.08)]">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Input</div>
-                  <h2 className="mt-2 text-2xl font-semibold">기본 정보 입력</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                  <h2 className="mt-2 text-3xl font-semibold">기본 정보 입력</h2>
+                  <p className="mt-2 text-sm leading-7 text-slate-500">
                     이름과 연락처를 남기고 출생 정보를 입력하면, 왼쪽에서 바로 호로스코프 휠을 확인할 수 있습니다.
                   </p>
                 </div>
@@ -1303,34 +1298,34 @@ export default function AstroChartExtractorPreview() {
                 <div className="mt-6 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                   <label className="space-y-1 md:col-span-2">
                     <span className="text-slate-600">이름</span>
-                    <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.person_name} onChange={(e) => setForm((prev) => ({ ...prev, person_name: e.target.value }))} />
+                    <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.person_name} onChange={(e) => setForm((prev) => ({ ...prev, person_name: e.target.value }))} />
                   </label>
 
                   <label className="space-y-1 md:col-span-2">
                     <span className="text-slate-600">연락처</span>
-                    <input className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="010-1234-5678" />
+                    <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="010-1234-5678" />
                   </label>
 
                   <label className="space-y-1 md:col-span-2">
                     <span className="text-slate-600">이메일 주소</span>
-                    <input type="email" className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+                    <input type="email" className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
                   </label>
 
                   <label className="space-y-1">
                     <span className="text-slate-600">생년월일</span>
-                    <input type="date" className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.birth_date} onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))} />
+                    <input type="date" className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.birth_date} onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))} />
                   </label>
 
                   <label className="space-y-1">
                     <span className="text-slate-600">출생 시간</span>
-                    <input type="time" className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.birth_time_local} onChange={(e) => setForm((prev) => ({ ...prev, birth_time_local: e.target.value }))} />
+                    <input type="time" className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.birth_time_local} onChange={(e) => setForm((prev) => ({ ...prev, birth_time_local: e.target.value }))} />
                   </label>
 
                   <div className="space-y-1 md:col-span-2" ref={cityBoxRef}>
                     <span className="text-slate-600">지역 선택</span>
                     <div className="relative">
                       <input
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                        className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3"
                         value={cityQuery}
                         onFocus={() => setShowSuggestions(true)}
                         onChange={(e) => {
@@ -1342,7 +1337,7 @@ export default function AstroChartExtractorPreview() {
                         placeholder="서울, 안양, 구리, Daejeon"
                       />
                       {showSuggestions && (cityLoading || citySuggestions.length > 0) && (
-                        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white shadow-lg">
                           {cityLoading && <div className="px-3 py-2 text-sm text-slate-500">검색 중...</div>}
                           {!cityLoading && citySuggestions.map((city) => (
                             <button key={`${city.label}-${city.source}`} onClick={() => applyCitySuggestion(city)} className="w-full border-t border-slate-100 px-3 py-3 text-left first:border-t-0 hover:bg-slate-50">
@@ -1361,7 +1356,7 @@ export default function AstroChartExtractorPreview() {
                     <div className="text-xs text-slate-500">한글/영문 도시명 모두 검색하고, 한국 도시는 우선 제안합니다.</div>
                   </div>
 
-                  <div className="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="md:col-span-2 rounded-[1.5rem] border border-[rgba(124,141,132,0.14)] bg-[rgba(243,245,239,0.82)] px-4 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <div className="text-sm font-medium text-slate-800">자동 설정된 위치 정보</div>
@@ -1376,12 +1371,12 @@ export default function AstroChartExtractorPreview() {
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <label className="space-y-1">
                         <span className="text-slate-600">Timezone</span>
-                        <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3" value={form.timezone} onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))} />
+                        <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white px-4 py-3" value={form.timezone} onChange={(e) => setForm((prev) => ({ ...prev, timezone: e.target.value }))} />
                       </label>
 
                       <label className="space-y-1">
                         <span className="text-slate-600">국가 코드</span>
-                        <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3" value={form.country_code} onChange={(e) => setForm((prev) => ({ ...prev, country_code: e.target.value }))} />
+                        <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white px-4 py-3" value={form.country_code} onChange={(e) => setForm((prev) => ({ ...prev, country_code: e.target.value }))} />
                       </label>
                     </div>
                   </div>
@@ -1391,7 +1386,7 @@ export default function AstroChartExtractorPreview() {
                     <input
                       inputMode="numeric"
                       maxLength={4}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 tracking-[0.35em]"
+                      className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3 tracking-[0.35em]"
                       value={form.report_viewer_code}
                       onChange={(e) => setForm((prev) => ({ ...prev, report_viewer_code: e.target.value.replace(/[^0-9]/g, "").slice(0, 4) }))}
                       placeholder="4자리 숫자"
@@ -1401,7 +1396,7 @@ export default function AstroChartExtractorPreview() {
                     </div>
                   </label>
                 </div>
-                <label className="mt-6 flex items-start gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+                <label className="mt-6 flex items-start gap-3 rounded-[1.5rem] border border-[rgba(124,141,132,0.14)] bg-[rgba(243,245,239,0.76)] px-4 py-4 text-sm leading-6 text-slate-600">
                   <input
                     type="checkbox"
                     className="mt-1 h-4 w-4 shrink-0 accent-slate-900"
@@ -1414,33 +1409,33 @@ export default function AstroChartExtractorPreview() {
                 </label>
 
                 <div className="mt-6 flex gap-3">
-                  <button onClick={handleCalculate} disabled={loading} className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 font-medium text-white shadow disabled:opacity-60">
-                    {loading ? "차트 계산 중..." : "차트 신청하기"}
+                  <button onClick={handleCalculate} disabled={loading} className="flex-1 rounded-2xl bg-[linear-gradient(180deg,#d6c8a8_0%,#c7b48c_100%)] px-4 py-3 font-medium text-[#22312e] shadow-[0_14px_30px_rgba(157,136,96,0.18)] disabled:opacity-60">
+                    {loading ? "차트 계산 중..." : "내 네이탈 차트 확인하기"}
                   </button>
                 </div>
 
                 {status && (
-                  <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                  <div className="mt-5 rounded-[1.5rem] border border-[rgba(124,141,132,0.14)] bg-[rgba(243,245,239,0.76)] p-4 text-sm text-slate-600">
                     <div>{status}</div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="mt-6 rounded-[2rem] border border-white/70 bg-white/95 p-6 shadow-sm">
+            <div className="mt-10 rounded-[2rem] border border-[rgba(120,137,128,0.10)] bg-transparent p-2">
               <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Short Reading</div>
-              <div className="mt-3 text-sm leading-7 text-slate-600">
+              <div className="mt-5 max-w-5xl text-[20px] leading-[1.95] text-slate-600 md:text-[25px]">
                 {publicBriefReadingPayload.intro}
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-4 max-w-5xl text-[20px] leading-[1.95] text-slate-700 md:text-[25px]">
                 {publicBriefReading.map((item) => (
-                  <div key={item.key} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-700">
+                  <p key={item.key} className="m-0">
                     <span className={`font-semibold ${item.tone}`}>{item.lead}</span>
                     {item.text}
-                  </div>
+                  </p>
                 ))}
               </div>
-              <div className="mt-4 text-sm font-medium leading-7 text-slate-900">
+              <div className="mt-6 max-w-5xl text-[20px] font-medium leading-[1.9] text-slate-900 md:text-[25px]">
                 {publicBriefReadingPayload.outro}
               </div>
             </div>
