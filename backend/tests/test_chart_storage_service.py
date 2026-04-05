@@ -13,8 +13,9 @@ from app.schemas import (
     ChartSettings,
     HouseCusp,
     NatalChartRecord,
+    ChartExtractRequest,
 )
-from app.services.chart_storage_service import build_apps_script_payload, store_chart_record
+from app.services.chart_storage_service import build_apps_script_payload, build_report_request_payload, store_chart_record
 
 
 def build_sample_chart() -> NatalChartRecord:
@@ -47,7 +48,24 @@ def build_sample_chart() -> NatalChartRecord:
 
 def test_build_apps_script_payload_embeds_chart_json():
     chart = build_sample_chart()
-    payload = build_apps_script_payload(chart)
+    request_payload = ChartExtractRequest(
+        person_name="Sample",
+        phone="010-1111-2222",
+        email="sample@example.com",
+        birth_date="2016-04-19",
+        birth_time_local="15:20",
+        birth_place_name="Yongin-si, South Korea",
+        country_code="KR",
+        latitude=37.2333,
+        longitude=127.1833,
+        report_preset="teen_growth_report",
+        report_addons=["parenting", "wellbeing"],
+        report_id="report-sample-chart",
+        report_viewer_code="1234",
+        report_product_code="teen_growth_report",
+        report_payment_status="paid",
+    )
+    payload = build_apps_script_payload(chart, request_payload=request_payload)
 
     assert payload["record_id"] == "sample-chart"
     assert payload["chart_id"] == "sample-chart"
@@ -61,6 +79,14 @@ def test_build_apps_script_payload_embeds_chart_json():
     assert payload["soft_missing_json"] == "[]"
     assert payload["warnings_json"] == "[]"
     assert "\"chart_id\": \"sample-chart\"" in payload["chart_json"]
+    assert payload["report_preset"] == "teen_growth_report"
+    assert payload["viewer_code"] == "1234"
+    assert payload["product_code"] == "teen_growth_report"
+    assert payload["payment_status"] == "paid"
+    assert payload["report_request"]["preset"] == "teen_growth_report"
+    assert payload["report_request"]["addons"] == ["parenting", "wellbeing"]
+    assert payload["report_request"]["access"]["viewer_code"] == "1234"
+    assert "\"preset\": \"teen_growth_report\"" in payload["report_request_json"]
     assert payload["chart"]["metadata"]["engine_name"] == "swiss_ephemeris"
     assert payload["chart"]["angles"]["asc"]["formatted"] == "Virgo 12°48’"
 
@@ -155,3 +181,12 @@ async def test_store_chart_record_rejects_non_json_success_response(monkeypatch)
     assert result.stored is False
     assert result.status_code == 200
     assert result.message == "apps_script_non_json_response"
+
+
+def test_build_report_request_payload_defaults_to_adult_preset():
+    chart = build_sample_chart()
+    request = build_report_request_payload(chart)
+
+    assert request["preset"] == "adult_deep_blueprint"
+    assert request["addons"] == []
+    assert request["access"]["viewer_code"] is None

@@ -90,6 +90,7 @@ type NatalChartRecord = {
 };
 
 type WorkspaceMode = "public" | "internal";
+type ReportPreset = "core_snapshot" | "core_report" | "adult_deep_blueprint" | "teen_growth_report" | "child_parenting_report";
 
 type SavedLead = {
   id: string;
@@ -109,6 +110,8 @@ type SavedLead = {
     country_code: string;
     latitude: string;
     longitude: string;
+    report_preset: ReportPreset;
+    report_viewer_code: string;
   };
   chart: NatalChartRecord;
 };
@@ -122,6 +125,14 @@ type RemoteStoredChart = {
   birth_place_name?: string | null;
   email?: string | null;
   created_at?: string | null;
+  report_preset?: ReportPreset | null;
+  report_addons?: string[] | null;
+  report_id?: string | null;
+  report_viewer_code?: string | null;
+  report_product_code?: string | null;
+  report_payment_status?: string | null;
+  chart_svg?: string | null;
+  chart_svg_updated_at?: string | null;
   chart?: NatalChartRecord | null;
 };
 
@@ -275,6 +286,17 @@ function buildChartMarkdown(chart: NatalChartRecord) {
   return [...positions, "", ...angles, "", ...houses, "", ...aspects].join("\n");
 }
 
+function serializeChartSvg(container: HTMLDivElement | null) {
+  const svg = container?.querySelector("svg");
+  if (!svg) return null;
+  const serializer = new XMLSerializer();
+  const source = serializer.serializeToString(svg);
+  if (!source) return null;
+  return source.includes("xmlns=")
+    ? source
+    : source.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+}
+
 function normalizeText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -418,6 +440,64 @@ function getInternalAccessPassword() {
   return "7009";
 }
 
+const REPORT_PRESET_OPTIONS: Array<{ value: ReportPreset; label: string; note: string }> = [
+  { value: "core_snapshot", label: "코어 스냅샷", note: "핵심 포인트만 간단히 보는 요약형" },
+  { value: "core_report", label: "기본 보고서", note: "핵심 성향과 기본 흐름을 보는 표준형" },
+  { value: "adult_deep_blueprint", label: "어른 심층", note: "성인용 심층 해석과 통합 패턴" },
+  { value: "teen_growth_report", label: "청소년 성장", note: "학습, 진로, 부모 가이드 중심" },
+  { value: "child_parenting_report", label: "유아·양육", note: "기질, 반응 패턴, 양육 코칭 중심" },
+];
+
+const PUBLIC_PRODUCT_CARDS: Array<{ value: ReportPreset; audience: string; summary: string; bullets: string[] }> = [
+  {
+    value: "core_report",
+    audience: "처음 차트를 접하는 분",
+    summary: "핵심 성향과 방향을 빠르게 확인할 수 있는 기본 리포트입니다.",
+    bullets: ["행성·별자리·하우스 기본 해석", "삶의 흐름을 읽는 코어 설명", "처음 신청하는 분께 비교적 잘 맞을 수 있습니다."],
+  },
+  {
+    value: "adult_deep_blueprint",
+    audience: "성인 자기이해 중심",
+    summary: "내면 패턴, 관계의 흐름, 방향성을 더 깊게 읽는 심층 리포트입니다.",
+    bullets: ["빛·리스크·통합 구조", "핵심 패턴 중심의 심층 해석", "자기이해를 확장하고 싶은 분께 적합할 수 있습니다."],
+  },
+  {
+    value: "teen_growth_report",
+    audience: "학생 · 보호자",
+    summary: "학습 방식, 진로 방향, 정서 회복, 부모 가이드를 함께 보는 성장형 리포트입니다.",
+    bullets: ["학습 스타일과 과목군 힌트", "정서와 회복 포인트", "보호자가 함께 읽기에 유용할 수 있습니다."],
+  },
+  {
+    value: "child_parenting_report",
+    audience: "유아 · 아동 양육",
+    summary: "기질, 반응 패턴, 안정 조건, 양육 포인트를 중심으로 읽는 리포트입니다.",
+    bullets: ["아이를 바꾸기보다 먼저 이해하는 흐름", "기질과 반응 속도 중심", "양육 환경을 조정하는 데 도움이 될 수 있습니다."],
+  },
+];
+
+const PUBLIC_FAQ = [
+  {
+    question: "어떤 정보를 입력해야 하나요?",
+    answer: "이름, 생년월일, 출생 시간, 출생지 정보가 필요할 수 있습니다. 출생 시간이 정확할수록 해석의 밀도도 더 높아질 가능성이 있습니다.",
+  },
+  {
+    question: "결제 후 바로 볼 수 있나요?",
+    answer: "상품과 운영 상황에 따라 바로 열람되거나 준비 시간이 조금 필요할 수 있습니다. 결제가 확인되면 신청 시 설정한 열람 코드로 본인 보고서를 확인하게 됩니다.",
+  },
+  {
+    question: "보고서는 어떻게 확인하나요?",
+    answer: "차트 신청 시 저장된 record_id와 보고서 열람 코드(4자리)가 일치하면 본인 보고서를 열 수 있습니다.",
+  },
+  {
+    question: "점성학 해석은 확정적인 진단인가요?",
+    answer: "리포트는 자기이해를 돕기 위한 참고 자료로 활용될 수 있으며, 확정적인 진단이나 전문 판단을 대신하지는 않습니다.",
+  },
+];
+
+function reportPresetLabel(value: string) {
+  return REPORT_PRESET_OPTIONS.find((item) => item.value === value)?.label || value;
+}
+
 async function fetchCitySuggestions(query: string): Promise<CitySuggestion[]> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -553,6 +633,8 @@ export default function AstroChartExtractorPreview() {
     include_vulcan: false,
     include_vertex: true,
     include_fortune: true,
+    report_preset: "core_report" as ReportPreset,
+    report_viewer_code: "",
   });
   const [chart, setChart] = useState<NatalChartRecord>(sampleChart);
   const [loading, setLoading] = useState(false);
@@ -575,6 +657,7 @@ export default function AstroChartExtractorPreview() {
   const [show64Key, setShow64Key] = useState(false);
   const [jsonPanelOpen, setJsonPanelOpen] = useState(false);
   const [markdownCopyMessage, setMarkdownCopyMessage] = useState("");
+  const [pendingArtworkRecordId, setPendingArtworkRecordId] = useState("");
   const cityBoxRef = useRef<HTMLDivElement | null>(null);
   const chartCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -639,6 +722,8 @@ export default function AstroChartExtractorPreview() {
               lead.form.birth_date,
               lead.form.birth_time_local,
               lead.form.birth_place_name,
+              lead.form.report_preset,
+              lead.form.report_viewer_code,
               lead.email,
             ].join(" ")
           ).includes(query)
@@ -664,6 +749,10 @@ export default function AstroChartExtractorPreview() {
               item.birth_place_name,
               item.phone,
               item.email,
+              item.report_preset,
+              item.report_product_code,
+              item.report_viewer_code,
+              item.report_payment_status,
             ].join(" ")
           ).includes(query)
         ),
@@ -753,6 +842,41 @@ export default function AstroChartExtractorPreview() {
   }, [markdownCopyMessage]);
 
   useEffect(() => {
+    if (!pendingArtworkRecordId) return;
+    let cancelled = false;
+
+    const run = async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+      if (cancelled) return;
+      const chartSvg = serializeChartSvg(chartCardRef.current);
+      if (!chartSvg) {
+        setPendingArtworkRecordId("");
+        return;
+      }
+
+      try {
+        await fetch(`${getApiBase()}/stored-charts/${encodeURIComponent(pendingArtworkRecordId)}/chart-art`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chart_svg: chartSvg,
+            chart_svg_updated_at: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // 차트 저장 본 흐름이 우선이라 SVG 동기화는 조용히 지나간다.
+      } finally {
+        if (!cancelled) setPendingArtworkRecordId("");
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [chart, pendingArtworkRecordId]);
+
+  useEffect(() => {
     const q = cityQuery.trim();
     if (!q) {
       setCitySuggestions([]);
@@ -808,6 +932,8 @@ export default function AstroChartExtractorPreview() {
         country_code: form.country_code,
         latitude: form.latitude,
         longitude: form.longitude,
+        report_preset: form.report_preset,
+        report_viewer_code: form.report_viewer_code,
       },
       chart: nextChart,
     };
@@ -864,6 +990,8 @@ export default function AstroChartExtractorPreview() {
         longitude: String(item.chart.input.longitude),
         phone: item.phone || prev.phone,
         email: item.email || prev.email,
+        report_preset: (item.report_preset as ReportPreset) || prev.report_preset,
+        report_viewer_code: item.report_viewer_code || prev.report_viewer_code,
       }));
       setStatus(`${item.person_name || "저장된 차트"} 차트를 불러왔어요.`);
       return;
@@ -880,6 +1008,8 @@ export default function AstroChartExtractorPreview() {
       birth_time_local: birthDateMatch?.[2] || item.birth_time_local || prev.birth_time_local,
       timezone: birthDateMatch?.[3] || prev.timezone,
       birth_place_name: normalizedPlaceName || prev.birth_place_name,
+      report_preset: (item.report_preset as ReportPreset) || prev.report_preset,
+      report_viewer_code: item.report_viewer_code || prev.report_viewer_code,
     }));
     if (normalizedPlaceName) {
       setCityQuery(normalizedPlaceName);
@@ -896,6 +1026,11 @@ export default function AstroChartExtractorPreview() {
     setLoading(true);
     setStatus("무료 네이탈 차트를 계산하고 있어요...");
     setInternalStatusDetail("");
+    if (!/^\d{4}$/.test(form.report_viewer_code)) {
+      setLoading(false);
+      setStatus("보고서 열람 코드(4자리)를 입력해 주세요.");
+      return;
+    }
     try {
       const payload = {
         person_name: form.person_name,
@@ -921,6 +1056,12 @@ export default function AstroChartExtractorPreview() {
         include_vulcan: form.include_vulcan,
         include_vertex: form.include_vertex,
         include_fortune: form.include_fortune,
+        report_preset: form.report_preset,
+        report_addons: [],
+        report_id: "",
+        report_viewer_code: form.report_viewer_code,
+        report_product_code: form.report_preset,
+        report_payment_status: "pending",
       };
 
       const res = await fetch(`${getApiBase()}/extract-and-store`, {
@@ -941,6 +1082,9 @@ export default function AstroChartExtractorPreview() {
       persistLead(nextChart);
       if (data.storage?.stored) {
         setStatus("차트가 준비되었어요.");
+        if (data.storage?.record_id) {
+          setPendingArtworkRecordId(data.storage.record_id);
+        }
         const storageBits = [
           data.storage.row_appended ? "row appended" : "",
           data.storage.row_updated ? "row updated" : "",
@@ -979,11 +1123,8 @@ export default function AstroChartExtractorPreview() {
   }
 
   function handleDownloadChart() {
-    const svg = chartCardRef.current?.querySelector("svg");
-    if (!svg) return;
-
-    const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svg);
+    const source = serializeChartSvg(chartCardRef.current);
+    if (!source) return;
     const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -1011,18 +1152,26 @@ export default function AstroChartExtractorPreview() {
           <div className="flex items-start justify-between gap-4">
             <div className="max-w-3xl">
               <div className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.25em] text-amber-700">
-                Free Natal Chart
+                natal.kr
               </div>
               <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
-                네이탈 차트를 바로 확인해 보세요.
+                당신의 차트를, 읽을 수 있는 보고서로.
               </h1>
               <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
-                네이탈 차트는 태어난 순간의 하늘 배치를 바탕으로 성향, 관계, 재능, 삶의 흐름을 읽어보는 기본 차트입니다. 출생 정보를 입력하면 차트를 바로 확인할 수 있습니다.
+                natal.kr은 출생 데이터를 바탕으로 차트를 계산하고, 그 결과를 실제로 읽고 활용할 수 있는 한국어 리포트로 정리하는 서비스를 준비하고 있습니다. 먼저 차트를 신청하고, 이후 상품과 열람 흐름에 따라 본인 보고서를 확인할 수 있습니다.
               </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <a href="#apply" className="rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow transition hover:opacity-95">
+                  차트 신청하기
+                </a>
+                <a href="#products" className="rounded-full border border-slate-200 bg-white/80 px-5 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+                  상품 보기
+                </a>
+              </div>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">즉시 계산</span>
-                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">출생지 자동 보정</span>
-                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">차트 저장</span>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">차트 신청 저장</span>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">보고서 열람 코드(4자리)</span>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1">결제 후 본문 열람</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -1066,8 +1215,94 @@ export default function AstroChartExtractorPreview() {
 
         {workspaceMode === "public" ? (
           <>
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">Service</div>
+                <h2 className="mt-3 text-2xl font-semibold">보고서 중심 구조</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  단순한 별자리 키워드 나열보다, 실제로 읽고 활용할 수 있는 리포트 구조를 중심으로 설계하고 있습니다.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">Access</div>
+                <h2 className="mt-3 text-2xl font-semibold">본인 열람 흐름</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  신청 시 설정한 보고서 열람 코드(4자리)와 record_id가 일치할 때만 본인 보고서를 열 수 있도록 준비하고 있습니다.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">Audience</div>
+                <h2 className="mt-3 text-2xl font-semibold">성인 · 청소년 · 유아</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  같은 차트라도 대상에 따라 읽는 방식이 달라질 수 있어, 상품별 리포트 레이어를 분리해 제공하려고 합니다.
+                </p>
+              </div>
+            </div>
+
+            <section id="products" className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
+              <div className="max-w-3xl">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Products</div>
+                <h2 className="mt-2 text-3xl font-semibold">상품 안내</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  현재 구조는 기본 보고서, 성인 심층, 청소년 성장, 유아·아동 기질 리포트로 나뉘어 있습니다. 각 상품은 읽는 대상과 활용 장면이 조금씩 다를 수 있습니다.
+                </p>
+              </div>
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                {PUBLIC_PRODUCT_CARDS.map((product) => (
+                  <article key={product.value} className="rounded-[1.75rem] border border-slate-200 bg-[linear-gradient(180deg,#fffefb_0%,#f8f3ea_100%)] p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-lg font-semibold text-slate-900">{reportPresetLabel(product.value)}</div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500">{product.audience}</span>
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-slate-600">{product.summary}</p>
+                    <div className="mt-4 space-y-2 text-sm leading-6 text-slate-700">
+                      {product.bullets.map((bullet) => (
+                        <div key={bullet} className="flex gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          <span>{bullet}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
               <div className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Flow</div>
+                <h2 className="mt-2 text-3xl font-semibold">이용 흐름</h2>
+                <div className="mt-6 grid gap-4 md:grid-cols-4">
+                  {[
+                    ["01", "출생 정보를 입력합니다.", "이름, 생년월일, 출생 시간, 출생지 정보를 바탕으로 차트를 계산합니다."],
+                    ["02", "원하는 상품을 선택합니다.", "기본 보고서, 성인 심층, 청소년 성장, 유아·양육 흐름 중에서 고를 수 있습니다."],
+                    ["03", "열람 코드를 설정합니다.", "보고서 열람 코드(4자리)는 결제 완료 후 본인 확인용으로 사용됩니다."],
+                    ["04", "결제 후 보고서를 확인합니다.", "저장된 record_id와 열람 코드가 일치하면 본문을 확인하게 됩니다."],
+                  ].map(([step, title, body]) => (
+                    <div key={step} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">{step}</div>
+                      <div className="mt-2 text-base font-semibold text-slate-900">{title}</div>
+                      <div className="mt-2 text-sm leading-6 text-slate-600">{body}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-amber-200 bg-amber-50/70 p-6 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">Access</div>
+                <h2 className="mt-2 text-2xl font-semibold">열람 방식</h2>
+                <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
+                  <p>보고서 신청 시 저장된 <strong>record_id</strong>와 <strong>보고서 열람 코드(4자리)</strong>가 모두 맞아야 본문을 확인할 수 있도록 준비하고 있습니다.</p>
+                  <p>결제가 완료되지 않았거나 열람 코드가 일치하지 않으면 보고서 본문은 열리지 않습니다.</p>
+                </div>
+                <div className="mt-5 rounded-[1.5rem] border border-white/80 bg-white/80 px-4 py-4 text-xs leading-6 text-slate-600">
+                  열람 코드는 비회원 상태에서도 본인 확인용으로 사용할 수 있는 가장 간단한 접근 수단으로 설계되어 있습니다.
+                </div>
+              </div>
+            </section>
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+              <div id="apply" className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Step 1</div>
                   <h2 className="mt-2 text-2xl font-semibold">기본 정보 입력</h2>
@@ -1091,6 +1326,50 @@ export default function AstroChartExtractorPreview() {
                     <span className="text-slate-600">이메일 주소</span>
                     <input type="email" className="w-full rounded-2xl border border-slate-200 px-4 py-3" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
                   </label>
+
+                  <div className="space-y-3 md:col-span-2 rounded-[1.5rem] border border-amber-200 bg-amber-50/60 px-4 py-4">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">보고서 상품과 열람 코드</div>
+                      <div className="mt-1 text-xs leading-5 text-slate-600">
+                        차트 저장 시 선택한 상품과 보고서 열람 코드(4자리)가 함께 저장됩니다. 결제가 완료되면 이 코드로 본인 보고서를 열 수 있습니다.
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="space-y-1">
+                        <span className="text-slate-600">보고서 상품</span>
+                        <select
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                          value={form.report_preset}
+                          onChange={(e) => setForm((prev) => ({ ...prev, report_preset: e.target.value as ReportPreset }))}
+                        >
+                          {REPORT_PRESET_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="text-xs text-slate-500">
+                          {REPORT_PRESET_OPTIONS.find((option) => option.value === form.report_preset)?.note}
+                        </div>
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-slate-600">보고서 열람 코드(4자리)</span>
+                        <input
+                          inputMode="numeric"
+                          maxLength={4}
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 tracking-[0.35em]"
+                          value={form.report_viewer_code}
+                          onChange={(e) => setForm((prev) => ({ ...prev, report_viewer_code: e.target.value.replace(/[^0-9]/g, "").slice(0, 4) }))}
+                          placeholder="4자리 숫자"
+                        />
+                        <div className="text-xs text-slate-500">보고서 조회 앱에서 본인 확인용으로 사용할 4자리 숫자입니다.</div>
+                      </label>
+                    </div>
+                    <div className="rounded-[1.25rem] border border-white/80 bg-white/80 px-4 py-4 text-xs leading-6 text-slate-600">
+                      <div><strong className="text-slate-900">기본 보고서</strong>는 핵심 성향과 방향을 빠르게 보는 흐름에 가깝고, <strong className="text-slate-900">청소년 성장</strong>은 학습·진로·부모 가이드를 함께 보려는 경우에 더 잘 맞을 수 있습니다.</div>
+                      <div className="mt-2"><strong className="text-slate-900">유아·양육</strong>은 기질과 반응 패턴 중심으로, <strong className="text-slate-900">어른 심층</strong>은 자기이해와 통합 해석 중심으로 읽히는 경향이 있습니다.</div>
+                    </div>
+                  </div>
 
                   <label className="space-y-1">
                     <span className="text-slate-600">생년월일</span>
@@ -1182,7 +1461,8 @@ export default function AstroChartExtractorPreview() {
 
                 {status && (
                   <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    {status}
+                    <div>{status}</div>
+                    <div className="mt-2 text-xs text-slate-500">선택 상품: {reportPresetLabel(form.report_preset)} · 열람 코드: {form.report_viewer_code || "미입력"}</div>
                   </div>
                 )}
               </div>
@@ -1233,6 +1513,11 @@ export default function AstroChartExtractorPreview() {
                       <div className="mt-1 text-xs text-slate-500">{chart.input.birth_date} · {chart.input.birth_time_local}</div>
                     </div>
                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                      <div className="text-xs uppercase tracking-[0.22em] text-slate-400">보고서 설정</div>
+                      <div className="mt-2 text-sm font-medium leading-6">{reportPresetLabel(form.report_preset)}</div>
+                      <div className="mt-1 text-xs text-slate-500">열람 코드 {form.report_viewer_code ? `• ${form.report_viewer_code}` : '미입력'}</div>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
                       <div className="text-xs uppercase tracking-[0.22em] text-slate-400">추가로 볼 포인트</div>
                       <div className="mt-2 space-y-1 text-sm font-medium leading-6">
                         {publicVisiblePoints.length ? (
@@ -1255,6 +1540,68 @@ export default function AstroChartExtractorPreview() {
 
               </div>
             </div>
+
+            <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">FAQ</div>
+                <h2 className="mt-2 text-3xl font-semibold">자주 묻는 질문</h2>
+                <div className="mt-6 space-y-4">
+                  {PUBLIC_FAQ.map((item) => (
+                    <article key={item.question} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                      <h3 className="text-base font-semibold text-slate-900">{item.question}</h3>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">{item.answer}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Policy</div>
+                <h2 className="mt-2 text-3xl font-semibold">이용 전 안내</h2>
+                <div className="mt-6 space-y-4">
+                  <article id="refund" className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <h3 className="text-base font-semibold text-slate-900">환불 / 취소 정책</h3>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">
+                      리포트는 출생 데이터를 바탕으로 생성되는 디지털 콘텐츠의 성격을 가질 수 있습니다. 제작이 시작되지 않은 상태라면 환불이 가능할 수 있으나, 제작이 시작되었거나 제공이 완료된 이후에는 환불이 제한될 수 있습니다.
+                    </p>
+                  </article>
+                  <article id="privacy" className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <h3 className="text-base font-semibold text-slate-900">개인정보처리방침</h3>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">
+                      이름, 연락처, 이메일, 출생 정보, 결제 정보 일부는 차트 계산, 리포트 생성, 고객 안내 목적 범위 안에서만 사용될 수 있습니다. 자세한 기준은 별도 정책 페이지로 확장할 예정입니다.
+                    </p>
+                  </article>
+                  <article id="terms" className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <h3 className="text-base font-semibold text-slate-900">이용약관</h3>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">
+                      리포트는 자기이해를 돕기 위한 참고 자료로 활용될 수 있으며, 확정적인 진단이나 전문 판단을 대신하지 않습니다. 서비스 범위와 책임 제한은 운영 정책에 따라 고지될 예정입니다.
+                    </p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <footer className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">natal.kr</div>
+                  <div className="mt-2 text-2xl font-semibold text-slate-900">차트를, 읽을 수 있는 보고서로.</div>
+                  <div className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                    상품 소개, 차트 신청, 결제 후 본문 열람까지 이어지는 구조를 기준으로 서비스를 정리하고 있습니다.
+                  </div>
+                </div>
+                <div className="text-sm leading-7 text-slate-500">
+                  <div>문의: hello@natal.kr</div>
+                  <div className="mt-1 flex flex-wrap gap-3">
+                    <a href="#products" className="hover:text-slate-900">상품 안내</a>
+                    <a href="#apply" className="hover:text-slate-900">차트 신청</a>
+                    <a href="#refund" className="hover:text-slate-900">환불 정책</a>
+                    <a href="#privacy" className="hover:text-slate-900">개인정보처리방침</a>
+                    <a href="#terms" className="hover:text-slate-900">이용약관</a>
+                  </div>
+                </div>
+              </div>
+            </footer>
           </>
         ) : (
           <>
@@ -1299,6 +1646,11 @@ export default function AstroChartExtractorPreview() {
                           </div>
                           <div className="text-sm text-slate-600">
                             {group.date} · {item.birth_time_local || "--:--"} · {item.birth_place_name || "지역 없음"}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium text-slate-500">
+                            {item.report_preset && <span className="rounded-full bg-slate-100 px-2 py-1">{reportPresetLabel(item.report_preset)}</span>}
+                            {item.report_payment_status && <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">{item.report_payment_status}</span>}
+                            {item.report_viewer_code && <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">열람 코드 {item.report_viewer_code}</span>}
                           </div>
                         </button>
                       ))}

@@ -3,8 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from ...schemas import (
+    ChartArtworkUpdateRequest,
     ChartExtractAndStoreResponse,
     ChartExtractRequest,
+    ChartStorageResult,
     NatalChartRecord,
     StoredChartDetailResponse,
     StoredChartListResponse,
@@ -12,7 +14,7 @@ from ...schemas import (
     TextChartExtractionResponse,
 )
 from ...services.chart_service import build_chart_record
-from ...services.chart_storage_service import fetch_stored_chart, fetch_stored_charts, store_chart_record
+from ...services.chart_storage_service import fetch_stored_chart, fetch_stored_charts, store_chart_record, update_stored_chart_artwork
 from ...services.chart_text_parser import extract_chart_from_text
 
 router = APIRouter()
@@ -44,3 +46,12 @@ async def get_stored_charts(limit: int = 100) -> StoredChartListResponse:
 @router.get("/api/chart/stored-charts/{record_id}", response_model=StoredChartDetailResponse)
 async def get_stored_chart(record_id: str) -> StoredChartDetailResponse:
     return await fetch_stored_chart(record_id=record_id)
+
+
+@router.post("/api/chart/stored-charts/{record_id}/chart-art", response_model=ChartStorageResult)
+async def post_stored_chart_art(record_id: str, payload: ChartArtworkUpdateRequest) -> ChartStorageResult:
+    return await update_stored_chart_artwork(
+        record_id=record_id,
+        chart_svg=payload.chart_svg,
+        chart_svg_updated_at=payload.chart_svg_updated_at,
+    )

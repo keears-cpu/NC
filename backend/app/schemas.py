@@ -7,6 +7,16 @@ from pydantic import BaseModel, Field
 
 AngleKey = Literal["asc", "mc", "dsc", "ic"]
 Classification = Literal["planet", "asteroid", "mathematical_point", "angle", "hypothetical"]
+ReportPreset = Literal[
+    "core_snapshot",
+    "core_report",
+    "adult_deep_blueprint",
+    "teen_growth_report",
+    "child_parenting_report",
+]
+ReportAddon = Literal["career", "money", "relationship", "wellbeing", "parenting"]
+PaymentStatus = Literal["pending", "paid", "expired", "cancelled"]
+PaymentProvider = Literal["portone"]
 
 
 class ChartMetadata(BaseModel):
@@ -114,6 +124,60 @@ class ChartExtractRequest(BaseModel):
     include_vulcan: bool = False
     include_vertex: bool = True
     include_fortune: bool = True
+    report_preset: ReportPreset | None = None
+    report_addons: list[ReportAddon] = Field(default_factory=list)
+    report_id: str | None = None
+    report_viewer_code: str | None = Field(default=None, pattern=r"^\d{4}$")
+    report_product_code: str | None = None
+    report_payment_status: PaymentStatus | None = None
+
+
+class ChartArtworkUpdateRequest(BaseModel):
+    chart_svg: str = Field(min_length=1)
+    chart_svg_updated_at: str | None = None
+
+
+class PaymentPrepareRequest(BaseModel):
+    record_id: str
+    product_code: str
+    viewer_code: str = Field(pattern=r"^\d{4}$")
+    customer_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    provider: PaymentProvider = "portone"
+    pay_method: str = "CARD"
+
+
+class PaymentPrepareResponse(BaseModel):
+    ok: bool
+    provider: PaymentProvider = "portone"
+    record_id: str
+    product_code: str
+    product_name: str
+    payment_order_id: str
+    payment_id: str
+    amount: int
+    currency: str
+    payment_status: PaymentStatus
+    client_payload: dict[str, object] = Field(default_factory=dict)
+    message: str | None = None
+
+
+class PaymentCompleteRequest(BaseModel):
+    payment_id: str
+    record_id: str | None = None
+    product_code: str | None = None
+
+
+class PaymentSyncResponse(BaseModel):
+    ok: bool
+    provider: PaymentProvider = "portone"
+    record_id: str | None = None
+    payment_id: str | None = None
+    payment_order_id: str | None = None
+    payment_status: PaymentStatus | None = None
+    message: str | None = None
+    payment: dict[str, object] | None = None
 
 
 class GeoSuggestion(BaseModel):
@@ -177,6 +241,18 @@ class StoredChartListItem(BaseModel):
     birth_place_name: str | None = None
     email: str | None = None
     created_at: str | None = None
+    report_preset: ReportPreset | None = None
+    report_addons: list[ReportAddon] = Field(default_factory=list)
+    report_id: str | None = None
+    report_viewer_code: str | None = None
+    report_product_code: str | None = None
+    report_payment_status: PaymentStatus | None = None
+    report_request: dict[str, object] | None = None
+    report_payload: dict[str, object] | None = None
+    report_html: str | None = None
+    report_html_url: str | None = None
+    chart_svg: str | None = None
+    chart_svg_updated_at: str | None = None
     chart: NatalChartRecord | None = None
 
 
