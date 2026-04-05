@@ -104,6 +104,8 @@ class ChartExtractRequest(BaseModel):
     person_name: str | None = None
     phone: str | None = None
     email: str | None = None
+    counselor_code: str | None = None
+    tester_local_id: str | None = None
     birth_date: str
     birth_time_local: str
     timezone: str = "Asia/Seoul"

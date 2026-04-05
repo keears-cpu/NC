@@ -606,6 +606,14 @@ function JsonBlock({ value }: { value: unknown }) {
 }
 
 export default function AstroChartExtractorPreview() {
+  const counselorCodeFromUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("counselor_code")?.trim().toUpperCase() || "";
+  }, []);
+  const testerLocalIdFromUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("tester_local_id")?.trim() || "";
+  }, []);
   const defaultBirthDate = getTodayLocalDate();
   const defaultBirthTime = getCurrentLocalTime();
   const [form, setForm] = useState({
@@ -966,6 +974,8 @@ export default function AstroChartExtractorPreview() {
         person_name: form.person_name,
         phone: form.phone,
         email: form.email,
+        counselor_code: counselorCodeFromUrl || null,
+        tester_local_id: testerLocalIdFromUrl || null,
         birth_date: form.birth_date,
         birth_time_local: form.birth_time_local,
         timezone: form.timezone,

@@ -7,84 +7,8 @@ import httpx
 
 from ..core.config import AppSettings, get_settings
 from ..schemas import ChartExtractRequest, ChartStorageResult, NatalChartRecord, StoredChartDetailResponse, StoredChartListItem, StoredChartListResponse
-
-
-def build_report_request_payload(
-    chart: NatalChartRecord,
-    request_payload: ChartExtractRequest | None = None,
-) -> dict[str, object]:
-    return {
-        "chart": chart.model_dump(mode="json"),
-        "preset": request_payload.report_preset if request_payload and request_payload.report_preset else "adult_deep_blueprint",
-        "addons": request_payload.report_addons if request_payload else [],
-        "options": {
-            "language": "ko-KR",
-            "tone": "parent_friendly",
-            "format": "both",
-            "audience": "parent",
-        },
-        "access": {
-            "report_id": request_payload.report_id if request_payload else None,
-            "viewer_code": request_payload.report_viewer_code if request_payload else None,
-            "product_code": request_payload.report_product_code if request_payload else None,
-            "payment_status": request_payload.report_payment_status if request_payload else None,
-        },
-    }
-
-
-def build_apps_script_payload(
-    chart: NatalChartRecord,
-    request_payload: ChartExtractRequest | None = None,
-) -> dict[str, object]:
-    chart_json = chart.model_dump(mode="json")
-    report_request = build_report_request_payload(chart, request_payload=request_payload)
-    return {
-        "record_id": chart.metadata.chart_id,
-        "chart_id": chart.metadata.chart_id,
-        "engine_name": chart.metadata.engine_name,
-        "status": chart.metadata.status,
-        "person_name": chart.input.person_name,
-        "phone": request_payload.phone if request_payload else None,
-        "email": request_payload.email if request_payload else None,
-        "report_preset": request_payload.report_preset if request_payload else None,
-        "report_addons_json": json.dumps(request_payload.report_addons if request_payload else [], ensure_ascii=False),
-        "report_id": request_payload.report_id if request_payload else None,
-        "viewer_code": request_payload.report_viewer_code if request_payload else None,
-        "product_code": request_payload.report_product_code if request_payload else None,
-        "payment_status": request_payload.report_payment_status if request_payload else None,
-        "source_type": "computed_by_fastapi",
-        "extraction_mode": "computed_by_swiss_ephemeris",
-        "classification": "computed_chart",
-        "notes": "stored_from_api_extract_and_store",
-        "birth_date": chart.input.birth_date,
-        "birth_time_local": chart.input.birth_time_local,
-        "timezone": chart.input.timezone,
-        "birth_place_name": chart.input.birth_place_name,
-        "country_code": chart.input.country_code,
-        "latitude": chart.input.latitude,
-        "longitude": chart.input.longitude,
-        "zodiac_type": chart.settings.zodiac_type,
-        "house_system": chart.settings.house_system,
-        "node_mode": chart.settings.node_mode,
-        "lilith_mode": chart.settings.lilith_mode,
-        "core_complete": chart.availability.core_complete,
-        "soft_missing_json": json.dumps(chart.availability.soft_missing, ensure_ascii=False),
-        "warnings_json": json.dumps(chart.metadata.warnings, ensure_ascii=False),
-        "chart_json": json.dumps(chart_json, ensure_ascii=False),
-        "report_request_json": json.dumps(report_request, ensure_ascii=False),
-        "report_payload_json": None,
-        "report_html": None,
-        "report_html_url": None,
-        "chart_svg": None,
-        "chart_svg_updated_at": None,
-        "provenance": {
-            "source_type": "computed_by_fastapi",
-            "extraction_mode": "computed_by_swiss_ephemeris",
-            "engine_name": chart.metadata.engine_name,
-        },
-        "chart": chart_json,
-        "report_request": report_request,
-    }
+from .postgres_storage_service import update_chart_artwork_postgres, upsert_chart_record_postgres
+from .storage_payloads import build_apps_script_payload
 
 
 async def store_chart_record(
@@ -93,13 +17,10 @@ async def store_chart_record(
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
+
+    postgres_result = await upsert_chart_record_postgres(chart, request_payload=request_payload, settings=settings)
     if not settings.google_apps_script_url:
-        return ChartStorageResult(
-            attempted=False,
-            stored=False,
-            destination=None,
-            message="GOOGLE_APPS_SCRIPT_URL not configured",
-        )
+        return postgres_result
 
     payload = build_apps_script_payload(chart, request_payload=request_payload)
     try:
@@ -129,7 +50,7 @@ async def store_chart_record(
         else:
             message = "apps_script_non_json_response"
 
-        return ChartStorageResult(
+        apps_script_result = ChartStorageResult(
             attempted=True,
             stored=stored,
             destination=settings.google_apps_script_url,
@@ -140,13 +61,15 @@ async def store_chart_record(
             row_updated=payload_json.get("row_updated") if isinstance(payload_json, dict) else None,
             row_appended=payload_json.get("row_appended") if isinstance(payload_json, dict) else None,
         )
+        return _merge_storage_results(apps_script_result, postgres_result)
     except Exception as exc:
-        return ChartStorageResult(
+        apps_script_result = ChartStorageResult(
             attempted=True,
             stored=False,
             destination=settings.google_apps_script_url,
             message=str(exc),
         )
+        return _merge_storage_results(apps_script_result, postgres_result)
 
 
 def _coerce_stored_chart_item(raw: dict[str, object]) -> StoredChartListItem | None:
@@ -372,13 +295,14 @@ async def update_stored_chart_artwork(
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
+    postgres_result = await update_chart_artwork_postgres(
+        record_id=record_id,
+        chart_svg=chart_svg,
+        chart_svg_updated_at=chart_svg_updated_at,
+        settings=settings,
+    )
     if not settings.google_apps_script_url:
-        return ChartStorageResult(
-            attempted=False,
-            stored=False,
-            destination=None,
-            message="GOOGLE_APPS_SCRIPT_URL not configured",
-        )
+        return postgres_result
 
     payload = {
       "record_id": record_id,
@@ -413,7 +337,7 @@ async def update_stored_chart_artwork(
         else:
             message = "apps_script_non_json_response"
 
-        return ChartStorageResult(
+        apps_script_result = ChartStorageResult(
             attempted=True,
             stored=stored,
             destination=settings.google_apps_script_url,
@@ -424,10 +348,39 @@ async def update_stored_chart_artwork(
             row_updated=payload_json.get("row_updated") if isinstance(payload_json, dict) else None,
             row_appended=payload_json.get("row_appended") if isinstance(payload_json, dict) else None,
         )
+        return _merge_storage_results(apps_script_result, postgres_result)
     except Exception as exc:
-        return ChartStorageResult(
+        apps_script_result = ChartStorageResult(
             attempted=True,
             stored=False,
             destination=settings.google_apps_script_url,
             message=str(exc),
         )
+        return _merge_storage_results(apps_script_result, postgres_result)
+
+
+def _merge_storage_results(
+    apps_script_result: ChartStorageResult,
+    postgres_result: ChartStorageResult,
+) -> ChartStorageResult:
+    destinations = [value for value in (apps_script_result.destination, postgres_result.destination) if value]
+    if apps_script_result.stored and postgres_result.stored:
+        message = "stored_both"
+    elif apps_script_result.stored and not postgres_result.stored:
+        message = f"stored_apps_script_only; postgres={postgres_result.message}"
+    elif postgres_result.stored and not apps_script_result.stored:
+        message = f"stored_postgres_only; apps_script={apps_script_result.message}"
+    else:
+        message = f"apps_script={apps_script_result.message}; postgres={postgres_result.message}"
+
+    return ChartStorageResult(
+        attempted=apps_script_result.attempted or postgres_result.attempted,
+        stored=apps_script_result.stored or postgres_result.stored,
+        destination=" + ".join(destinations) if destinations else None,
+        status_code=apps_script_result.status_code,
+        message=message,
+        record_id=apps_script_result.record_id or postgres_result.record_id,
+        row_number=apps_script_result.row_number,
+        row_updated=apps_script_result.row_updated,
+        row_appended=apps_script_result.row_appended,
+    )
