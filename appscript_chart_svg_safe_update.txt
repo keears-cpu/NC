@@ -173,7 +173,8 @@ function doPost(e) {
 
     const counselor = resolveCounselorForWrite_(payload);
     enforceCounselorWriteRules_(payload, counselor);
-    const rowObject = buildChartRowObject_(payload, counselor);
+    const existingRow = getRowByRecordId_(String(payload.record_id || payload.chart_id || '').trim(), null);
+    const rowObject = buildChartRowObject_(payload, counselor, existingRow);
     const writeResult = upsertChartRow_(getChartSheet_(), rowObject);
 
     return jsonResponse_({
@@ -529,92 +530,99 @@ function upsertCounselor_(payload) {
   return rowToObject_(sheet.getRange(rowNumber, 1, 1, COUNSELOR_HEADERS.length).getValues()[0], COUNSELOR_HEADERS);
 }
 
-function buildChartRowObject_(payload, counselor) {
+function pickValue_(incoming, existing, fallback) {
+  if (incoming !== undefined && incoming !== null && String(incoming) !== '') return incoming;
+  if (existing !== undefined && existing !== null && String(existing) !== '') return existing;
+  return fallback;
+}
+
+function buildChartRowObject_(payload, counselor, existingRow) {
   const now = new Date().toISOString();
   const chart = normalizeChart_(payload);
   const points = indexById_((chart && chart.points) || []);
   const bodies = indexById_((chart && chart.bodies) || []);
   const houses = indexByHouse_((chart && chart.houses) || []);
   const angles = (chart && chart.angles) || {};
+  const existing = existingRow || {};
 
   return {
-    created_at: String(payload.created_at || now),
+    created_at: String(pickValue_(payload.created_at, existing.created_at, now)),
     updated_at: now,
-    record_id: String(payload.record_id || payload.chart_id || ''),
-    chart_id: String(payload.chart_id || payload.record_id || ''),
-    person_name: String(payload.person_name || get_(chart, ['input', 'person_name']) || ''),
-    phone: String(payload.phone || ''),
-    email: String(payload.email || ''),
-    birth_date: String(payload.birth_date || get_(chart, ['input', 'birth_date']) || ''),
-    birth_time_local: String(payload.birth_time_local || get_(chart, ['input', 'birth_time_local']) || ''),
-    timezone: String(payload.timezone || get_(chart, ['input', 'timezone']) || DEFAULT_TIMEZONE),
-    birth_place_name: String(payload.birth_place_name || get_(chart, ['input', 'birth_place_name']) || ''),
-    country_code: String(payload.country_code || get_(chart, ['input', 'country_code']) || ''),
-    latitude: String(payload.latitude != null ? payload.latitude : get_(chart, ['input', 'latitude']) || ''),
-    longitude: String(payload.longitude != null ? payload.longitude : get_(chart, ['input', 'longitude']) || ''),
-    engine_name: String(payload.engine_name || get_(chart, ['metadata', 'engine_name']) || ''),
-    status: String(payload.status || get_(chart, ['metadata', 'status']) || ''),
-    source_type: String(payload.source_type || 'computed_by_fastapi'),
-    extraction_mode: String(payload.extraction_mode || 'computed_by_swiss_ephemeris'),
-    classification: String(payload.classification || 'computed_chart'),
-    notes: String(payload.notes || ''),
-    zodiac_type: String(payload.zodiac_type || get_(chart, ['settings', 'zodiac_type']) || ''),
-    house_system: String(payload.house_system || get_(chart, ['settings', 'house_system']) || ''),
-    node_mode: String(payload.node_mode || get_(chart, ['settings', 'node_mode']) || ''),
-    lilith_mode: String(payload.lilith_mode || get_(chart, ['settings', 'lilith_mode']) || ''),
-    fortune_formula: String(payload.fortune_formula || get_(chart, ['settings', 'fortune_formula']) || ''),
-    asc_formatted: formatAngle_(angles.asc),
-    mc_formatted: formatAngle_(angles.mc),
-    dsc_formatted: formatAngle_(angles.dsc),
-    ic_formatted: formatAngle_(angles.ic),
-    house_1: formatHouse_(houses[1]),
-    house_2: formatHouse_(houses[2]),
-    house_3: formatHouse_(houses[3]),
-    house_4: formatHouse_(houses[4]),
-    house_5: formatHouse_(houses[5]),
-    house_6: formatHouse_(houses[6]),
-    house_7: formatHouse_(houses[7]),
-    house_8: formatHouse_(houses[8]),
-    house_9: formatHouse_(houses[9]),
-    house_10: formatHouse_(houses[10]),
-    house_11: formatHouse_(houses[11]),
-    house_12: formatHouse_(houses[12]),
-    sun: formatPoint_(bodies.sun),
-    moon: formatPoint_(bodies.moon),
-    mercury: formatPoint_(bodies.mercury),
-    venus: formatPoint_(bodies.venus),
-    mars: formatPoint_(bodies.mars),
-    jupiter: formatPoint_(bodies.jupiter),
-    saturn: formatPoint_(bodies.saturn),
-    uranus: formatPoint_(bodies.uranus),
-    neptune: formatPoint_(bodies.neptune),
-    pluto: formatPoint_(bodies.pluto),
-    north_node_true: formatPoint_(points.north_node_true),
-    lilith_mean: formatPoint_(points.lilith_mean),
-    chiron: formatPoint_(points.chiron),
-    ceres: formatPoint_(points.ceres),
-    pallas: formatPoint_(points.pallas),
-    juno: formatPoint_(points.juno),
-    vesta: formatPoint_(points.vesta),
-    vertex: formatPoint_(points.vertex),
-    fortune: formatPoint_(points.fortune),
-    aspects_summary: buildAspectsSummary_(chart),
-    counselor_code: String(counselor ? counselor.access_code : payload.counselor_code || '').trim().toUpperCase(),
-    counselor_name: String(counselor ? counselor.name : payload.counselor_name || ''),
-    tester_local_id: String(payload.tester_local_id || ''),
-    report_preset: String(payload.report_preset || ''),
-    report_addons_json: stringifyJson_(payload.report_addons_json, payload.report_addons || []),
-    report_id: String(payload.report_id || ''),
-    viewer_code: String(payload.viewer_code || payload.report_viewer_code || ''),
-    product_code: String(payload.product_code || payload.report_product_code || ''),
-    payment_status: String(payload.payment_status || payload.report_payment_status || ''),
-    report_request_json: stringifyJson_(payload.report_request_json, payload.report_request || null),
-    report_payload_json: stringifyJson_(payload.report_payload_json, payload.report_payload || null),
-    report_html: String(payload.report_html || ''),
-    report_html_url: String(payload.report_html_url || ''),
-    chart_svg: String(payload.chart_svg || ''),
-    chart_svg_updated_at: String(payload.chart_svg_updated_at || (payload.chart_svg ? now : '')),
-    chart_json: stringifyJson_(payload.chart_json, chart || payload.chart || null)
+    record_id: String(pickValue_(payload.record_id, existing.record_id, payload.chart_id || '')),
+    chart_id: String(pickValue_(payload.chart_id, existing.chart_id, payload.record_id || '')),
+    person_name: String(pickValue_(payload.person_name, existing.person_name, get_(chart, ['input', 'person_name']) || '')),
+    phone: String(pickValue_(payload.phone, existing.phone, '')),
+    email: String(pickValue_(payload.email, existing.email, '')),
+    birth_date: String(pickValue_(payload.birth_date, existing.birth_date, get_(chart, ['input', 'birth_date']) || '')),
+    birth_time_local: String(pickValue_(payload.birth_time_local, existing.birth_time_local, get_(chart, ['input', 'birth_time_local']) || '')),
+    timezone: String(pickValue_(payload.timezone, existing.timezone, get_(chart, ['input', 'timezone']) || DEFAULT_TIMEZONE)),
+    birth_place_name: String(pickValue_(payload.birth_place_name, existing.birth_place_name, get_(chart, ['input', 'birth_place_name']) || '')),
+    country_code: String(pickValue_(payload.country_code, existing.country_code, get_(chart, ['input', 'country_code']) || '')),
+    latitude: String(pickValue_(payload.latitude, existing.latitude, get_(chart, ['input', 'latitude']) || '')),
+    longitude: String(pickValue_(payload.longitude, existing.longitude, get_(chart, ['input', 'longitude']) || '')),
+    engine_name: String(pickValue_(payload.engine_name, existing.engine_name, get_(chart, ['metadata', 'engine_name']) || '')),
+    status: String(pickValue_(payload.status, existing.status, get_(chart, ['metadata', 'status']) || '')),
+    source_type: String(pickValue_(payload.source_type, existing.source_type, 'computed_by_fastapi')),
+    extraction_mode: String(pickValue_(payload.extraction_mode, existing.extraction_mode, 'computed_by_swiss_ephemeris')),
+    classification: String(pickValue_(payload.classification, existing.classification, 'computed_chart')),
+    notes: String(pickValue_(payload.notes, existing.notes, '')),
+    zodiac_type: String(pickValue_(payload.zodiac_type, existing.zodiac_type, get_(chart, ['settings', 'zodiac_type']) || '')),
+    house_system: String(pickValue_(payload.house_system, existing.house_system, get_(chart, ['settings', 'house_system']) || '')),
+    node_mode: String(pickValue_(payload.node_mode, existing.node_mode, get_(chart, ['settings', 'node_mode']) || '')),
+    lilith_mode: String(pickValue_(payload.lilith_mode, existing.lilith_mode, get_(chart, ['settings', 'lilith_mode']) || '')),
+    fortune_formula: String(pickValue_(payload.fortune_formula, existing.fortune_formula, get_(chart, ['settings', 'fortune_formula']) || '')),
+    asc_formatted: String(pickValue_(formatAngle_(angles.asc), existing.asc_formatted, '')),
+    mc_formatted: String(pickValue_(formatAngle_(angles.mc), existing.mc_formatted, '')),
+    dsc_formatted: String(pickValue_(formatAngle_(angles.dsc), existing.dsc_formatted, '')),
+    ic_formatted: String(pickValue_(formatAngle_(angles.ic), existing.ic_formatted, '')),
+    house_1: String(pickValue_(formatHouse_(houses[1]), existing.house_1, '')),
+    house_2: String(pickValue_(formatHouse_(houses[2]), existing.house_2, '')),
+    house_3: String(pickValue_(formatHouse_(houses[3]), existing.house_3, '')),
+    house_4: String(pickValue_(formatHouse_(houses[4]), existing.house_4, '')),
+    house_5: String(pickValue_(formatHouse_(houses[5]), existing.house_5, '')),
+    house_6: String(pickValue_(formatHouse_(houses[6]), existing.house_6, '')),
+    house_7: String(pickValue_(formatHouse_(houses[7]), existing.house_7, '')),
+    house_8: String(pickValue_(formatHouse_(houses[8]), existing.house_8, '')),
+    house_9: String(pickValue_(formatHouse_(houses[9]), existing.house_9, '')),
+    house_10: String(pickValue_(formatHouse_(houses[10]), existing.house_10, '')),
+    house_11: String(pickValue_(formatHouse_(houses[11]), existing.house_11, '')),
+    house_12: String(pickValue_(formatHouse_(houses[12]), existing.house_12, '')),
+    sun: String(pickValue_(formatPoint_(bodies.sun), existing.sun, '')),
+    moon: String(pickValue_(formatPoint_(bodies.moon), existing.moon, '')),
+    mercury: String(pickValue_(formatPoint_(bodies.mercury), existing.mercury, '')),
+    venus: String(pickValue_(formatPoint_(bodies.venus), existing.venus, '')),
+    mars: String(pickValue_(formatPoint_(bodies.mars), existing.mars, '')),
+    jupiter: String(pickValue_(formatPoint_(bodies.jupiter), existing.jupiter, '')),
+    saturn: String(pickValue_(formatPoint_(bodies.saturn), existing.saturn, '')),
+    uranus: String(pickValue_(formatPoint_(bodies.uranus), existing.uranus, '')),
+    neptune: String(pickValue_(formatPoint_(bodies.neptune), existing.neptune, '')),
+    pluto: String(pickValue_(formatPoint_(bodies.pluto), existing.pluto, '')),
+    north_node_true: String(pickValue_(formatPoint_(points.north_node_true), existing.north_node_true, '')),
+    lilith_mean: String(pickValue_(formatPoint_(points.lilith_mean), existing.lilith_mean, '')),
+    chiron: String(pickValue_(formatPoint_(points.chiron), existing.chiron, '')),
+    ceres: String(pickValue_(formatPoint_(points.ceres), existing.ceres, '')),
+    pallas: String(pickValue_(formatPoint_(points.pallas), existing.pallas, '')),
+    juno: String(pickValue_(formatPoint_(points.juno), existing.juno, '')),
+    vesta: String(pickValue_(formatPoint_(points.vesta), existing.vesta, '')),
+    vertex: String(pickValue_(formatPoint_(points.vertex), existing.vertex, '')),
+    fortune: String(pickValue_(formatPoint_(points.fortune), existing.fortune, '')),
+    aspects_summary: String(pickValue_(buildAspectsSummary_(chart), existing.aspects_summary, '')),
+    counselor_code: String(pickValue_(counselor ? counselor.access_code : payload.counselor_code, existing.counselor_code, '')).trim().toUpperCase(),
+    counselor_name: String(pickValue_(counselor ? counselor.name : payload.counselor_name, existing.counselor_name, '')),
+    tester_local_id: String(pickValue_(payload.tester_local_id, existing.tester_local_id, '')),
+    report_preset: String(pickValue_(payload.report_preset, existing.report_preset, '')),
+    report_addons_json: stringifyJson_(payload.report_addons_json, payload.report_addons || parseJsonSafe_(existing.report_addons_json) || []),
+    report_id: String(pickValue_(payload.report_id, existing.report_id, '')),
+    viewer_code: String(pickValue_(payload.viewer_code || payload.report_viewer_code, existing.viewer_code, '')),
+    product_code: String(pickValue_(payload.product_code || payload.report_product_code, existing.product_code, '')),
+    payment_status: String(pickValue_(payload.payment_status || payload.report_payment_status, existing.payment_status, '')),
+    report_request_json: stringifyJson_(payload.report_request_json, payload.report_request || parseJsonSafe_(existing.report_request_json) || null),
+    report_payload_json: stringifyJson_(payload.report_payload_json, payload.report_payload || parseJsonSafe_(existing.report_payload_json) || null),
+    report_html: String(pickValue_(payload.report_html, existing.report_html, '')),
+    report_html_url: String(pickValue_(payload.report_html_url, existing.report_html_url, '')),
+    chart_svg: String(pickValue_(payload.chart_svg, existing.chart_svg, '')),
+    chart_svg_updated_at: String(pickValue_(payload.chart_svg_updated_at, existing.chart_svg_updated_at, payload.chart_svg ? now : '')),
+    chart_json: stringifyJson_(payload.chart_json, chart || payload.chart || parseJsonSafe_(existing.chart_json) || null)
   };
 }
 
@@ -643,6 +651,15 @@ function normalizeChart_(payload) {
     }
   }
   return null;
+}
+
+function parseJsonSafe_(value) {
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return null;
+  }
 }
 
 function indexById_(items) {
