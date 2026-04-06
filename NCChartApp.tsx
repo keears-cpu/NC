@@ -892,6 +892,8 @@ export default function AstroChartExtractorPreview() {
 
   useEffect(() => {
     if (!pendingArtworkRecordId) return;
+    setPendingArtworkRecordId("");
+    return;
     let cancelled = false;
 
     const run = async () => {
