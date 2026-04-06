@@ -7,7 +7,7 @@ import httpx
 
 from ..core.config import AppSettings, get_settings
 from ..schemas import ChartExtractRequest, ChartStorageResult, NatalChartRecord, StoredChartDetailResponse, StoredChartListItem, StoredChartListResponse
-from .postgres_storage_service import update_chart_artwork_postgres, upsert_chart_record_postgres
+from .postgres_storage_service import fetch_chart_record_postgres, update_chart_artwork_postgres, upsert_chart_record_postgres
 from .storage_payloads import build_apps_script_payload
 
 
@@ -279,6 +279,20 @@ async def fetch_stored_chart(
         elif payload.get("ok") is True and payload.get("record_id"):
             raw_item = payload
 
+    postgres_raw = await fetch_chart_record_postgres(record_id, settings=settings)
+    if raw_item and postgres_raw:
+        merged = dict(raw_item)
+        for key, value in postgres_raw.items():
+            if key in {"chart_svg", "chart_svg_updated_at", "report_payload", "report_payload_json", "report_html", "report_html_url"}:
+                if value not in (None, "", [], {}):
+                    merged[key] = value
+                continue
+            if merged.get(key) in (None, "", [], {}):
+                merged[key] = value
+        raw_item = merged
+    elif postgres_raw and not raw_item:
+        raw_item = postgres_raw
+
     item = _coerce_stored_chart_item(raw_item) if raw_item else None
     return StoredChartDetailResponse(
         ok=response.is_success and item is not None,
@@ -295,68 +309,12 @@ async def update_stored_chart_artwork(
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
-    postgres_result = await update_chart_artwork_postgres(
+    return await update_chart_artwork_postgres(
         record_id=record_id,
         chart_svg=chart_svg,
         chart_svg_updated_at=chart_svg_updated_at,
         settings=settings,
     )
-    if not settings.google_apps_script_url:
-        return postgres_result
-
-    payload = {
-      "record_id": record_id,
-      "chart_svg": chart_svg,
-      "chart_svg_updated_at": chart_svg_updated_at,
-    }
-
-    try:
-        async with httpx.AsyncClient(
-            timeout=settings.google_apps_script_timeout_seconds,
-            follow_redirects=True,
-        ) as client:
-            response = await client.post(settings.google_apps_script_url, json=payload)
-        stored = False
-        message = response.text[:500] or "apps_script_request_failed"
-
-        try:
-            payload_json = response.json()
-        except ValueError:
-            payload_json = None
-
-        if isinstance(payload_json, dict):
-            if payload_json.get("ok") is True and payload_json.get("row_number"):
-                stored = True
-                message = "stored"
-            elif payload_json.get("ok") is False:
-                message = str(payload_json.get("error") or payload_json)
-            else:
-                message = str(payload_json)
-        elif not response.is_success:
-            message = response.text[:500] or "apps_script_request_failed"
-        else:
-            message = "apps_script_non_json_response"
-
-        apps_script_result = ChartStorageResult(
-            attempted=True,
-            stored=stored,
-            destination=settings.google_apps_script_url,
-            status_code=response.status_code,
-            message=message,
-            record_id=payload_json.get("record_id") if isinstance(payload_json, dict) else None,
-            row_number=payload_json.get("row_number") if isinstance(payload_json, dict) else None,
-            row_updated=payload_json.get("row_updated") if isinstance(payload_json, dict) else None,
-            row_appended=payload_json.get("row_appended") if isinstance(payload_json, dict) else None,
-        )
-        return _merge_storage_results(apps_script_result, postgres_result)
-    except Exception as exc:
-        apps_script_result = ChartStorageResult(
-            attempted=True,
-            stored=False,
-            destination=settings.google_apps_script_url,
-            message=str(exc),
-        )
-        return _merge_storage_results(apps_script_result, postgres_result)
 
 
 def _merge_storage_results(

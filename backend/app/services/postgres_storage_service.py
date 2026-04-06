@@ -253,3 +253,48 @@ async def update_chart_artwork_postgres(
             message=str(exc),
             record_id=record_id,
         )
+
+
+async def fetch_chart_record_postgres(
+    record_id: str,
+    settings: AppSettings | None = None,
+) -> dict[str, object] | None:
+    settings = settings or get_settings()
+    engine = get_engine(settings=settings)
+    if engine is None:
+        return None
+
+    await ensure_database_schema(settings=settings)
+
+    try:
+        async with engine.connect() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    select
+                        record_id, chart_id, engine_name, status, source_type, extraction_mode, classification, notes,
+                        person_name, phone, email, counselor_code, tester_local_id,
+                        birth_date, birth_time_local, timezone, birth_place_name, country_code, latitude, longitude,
+                        zodiac_type, house_system, node_mode, lilith_mode, fortune_formula,
+                        core_complete, soft_missing_json, warnings_json, chart_json, chart_svg, chart_svg_updated_at,
+                        report_preset, report_addons_json, report_id, viewer_code, product_code, payment_status,
+                        report_request_json, report_payload_json, report_html, report_html_url,
+                        created_at, updated_at
+                    from charts
+                    where record_id = :record_id
+                    """
+                ),
+                {"record_id": record_id},
+            )
+            row = result.mappings().first()
+    except Exception:
+        return None
+
+    if not row:
+        return None
+
+    raw = dict(row)
+    raw["chart"] = raw.get("chart_json")
+    raw["report_request"] = raw.get("report_request_json")
+    raw["report_payload"] = raw.get("report_payload_json")
+    return raw

@@ -892,8 +892,6 @@ export default function AstroChartExtractorPreview() {
 
   useEffect(() => {
     if (!pendingArtworkRecordId) return;
-    setPendingArtworkRecordId("");
-    return;
     let cancelled = false;
 
     const run = async () => {
@@ -1312,16 +1310,6 @@ export default function AstroChartExtractorPreview() {
                     <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.person_name} onChange={(e) => setForm((prev) => ({ ...prev, person_name: e.target.value }))} />
                   </label>
 
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-slate-600">연락처</span>
-                    <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="010-1234-5678" />
-                  </label>
-
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-slate-600">이메일 주소</span>
-                    <input type="email" className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
-                  </label>
-
                   <label className="space-y-1">
                     <span className="text-slate-600">생년월일</span>
                     <input type="date" className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.birth_date} onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))} />
@@ -1391,6 +1379,16 @@ export default function AstroChartExtractorPreview() {
                       </label>
                     </div>
                   </div>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-slate-600">연락처</span>
+                    <input className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="010-1234-5678" />
+                  </label>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-slate-600">이메일 주소</span>
+                    <input type="email" className="w-full rounded-2xl border border-[rgba(124,141,132,0.14)] bg-white/86 px-4 py-3" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+                  </label>
 
                   <label className="space-y-1 md:col-span-2">
                     <span className="text-slate-600">리포트 확인 코드(4자리)</span>

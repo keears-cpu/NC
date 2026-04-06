@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 DEFAULT_GOOGLE_APPS_SCRIPT_URL = (
-    "https://script.google.com/macros/s/AKfycbyJygDTaFgtuJfe2pB-t7eyqfRemXaUfHqdnKnQ2Qwti-SkrHuH3IHnvkh9grlNsQs/exec"
+    "https://script.google.com/macros/s/AKfycbw823je6-pogsZ7GQkDPyJUNPvAXJZ65xAK795Kfp0inZ5mtVP6RWL7u6kQVkxQ1NjJ/exec"
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

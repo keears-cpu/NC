@@ -130,7 +130,7 @@ type HexagramBand = {
   endLon: number;
 };
 
-type Plottable = Body | Point | { id: string; label: string; classification: Classification; degree: number; lon: number; retrograde?: boolean };
+type Plottable = Body | Point | { id: string; label: string; classification: Classification; degree: number; lon: number; house?: number | null; retrograde?: boolean };
 
 type AdvancedAstroWheelProps = {
   chart: NatalChartRecord;
@@ -248,21 +248,10 @@ const BODY_ICON: Record<string, string> = {
   fortune: FortuneIcon,
 };
 
-const ASPECT_STYLE: Record<string, { stroke: string; width: number; dasharray?: string }> = {
-  conjunction: { stroke: "#94a3b8", width: 1 },
-  sextile: { stroke: "#3b82f6", width: 1.1 },
-  square: { stroke: "#ef4444", width: 1.1 },
-  trine: { stroke: "#3b82f6", width: 1.1 },
-  opposition: { stroke: "#ef4444", width: 1.2 },
-  quincunx: { stroke: "#f59e0b", width: 0.95, dasharray: "4 3" },
-};
-
 const MAJOR_PLANETS = new Set(["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]);
+const DISPLAY_POINT_IDS = new Set(["north_node_true", "north_node_mean", "chiron"]);
+const DISPLAY_ANGLE_IDS = new Set<AngleKey>(["asc", "mc", "ic"]);
 const DEEP_GRAY = "#475569";
-
-function isAsteroidLike(item: { classification: Classification } | undefined) {
-  return item?.classification === "asteroid";
-}
 
 function normalizeLon(lon: number) {
   let value = lon % 360;
@@ -464,6 +453,41 @@ function buildOrbitLayout(items: Plottable[], anchorLon: number) {
   return placements;
 }
 
+function buildHouseHighlights(houses: HouseCusp[], items: Plottable[]) {
+  return houses.map((house) => {
+    const residents = items.filter((item) => item.house === house.house);
+    const residentIds = new Set(residents.map((item) => item.id));
+    const majorResidents = residents.filter((item) => MAJOR_PLANETS.has(item.id));
+    const hasSun = residentIds.has("sun");
+    const hasMoon = residentIds.has("moon");
+    const hasCluster = majorResidents.length >= 3;
+    const isHighlighted = hasSun || hasMoon || hasCluster;
+
+    let fill = "rgba(186, 200, 190, 0.14)";
+    if (hasSun && hasMoon) {
+      fill = "rgba(191, 174, 124, 0.2)";
+    } else if (hasSun) {
+      fill = "rgba(214, 177, 98, 0.18)";
+    } else if (hasMoon) {
+      fill = "rgba(138, 170, 214, 0.18)";
+    } else if (hasCluster) {
+      fill = "rgba(148, 165, 140, 0.16)";
+    }
+
+    const notes = [];
+    if (hasSun) notes.push("태양");
+    if (hasMoon) notes.push("달");
+    if (hasCluster) notes.push("집중");
+
+    return {
+      house: house.house,
+      isHighlighted,
+      fill,
+      note: notes.join(" · "),
+    };
+  });
+}
+
 export default function AdvancedAstroWheel({
   chart,
   size = 760,
@@ -497,36 +521,16 @@ export default function AdvancedAstroWheel({
 
   const hexagramBands = useMemo(() => groupHexagramBands(hexagramArcs), [hexagramArcs]);
 
-  const plottables = useMemo(() => [...chart.bodies, ...chart.points], [chart]);
-  const aspectPlottables = useMemo(
+  const plottables = useMemo(
     () => [
       ...chart.bodies,
-      ...chart.points,
-      { id: "asc", label: "Asc", classification: "angle" as const, degree: chart.angles.asc.degree, lon: chart.angles.asc.lon },
-      { id: "mc", label: "MC", classification: "angle" as const, degree: chart.angles.mc.degree, lon: chart.angles.mc.lon },
+      ...chart.points.filter((point) => DISPLAY_POINT_IDS.has(point.id)),
     ],
     [chart],
   );
 
   const placements = useMemo(() => buildOrbitLayout(plottables, anchorLon), [plottables, anchorLon]);
-  const bodyLookup = useMemo(() => new Map(aspectPlottables.map((item) => [item.id, item])), [aspectPlottables]);
-
-  const aspectLines = useMemo(() => {
-    const aspectRadius = INNER_CHART_R;
-    return chart.aspects
-      .map((aspect) => {
-        const a = bodyLookup.get(aspect.point_a);
-        const b = bodyLookup.get(aspect.point_b);
-        if (!a || !b) return null;
-        if (isAsteroidLike(a) || isAsteroidLike(b)) return null;
-        return {
-          ...aspect,
-          p1: linePoint(center, aspectRadius, a.lon, anchorLon),
-          p2: linePoint(center, aspectRadius, b.lon, anchorLon),
-        };
-      })
-      .filter((item): item is Aspect & { p1: { x: number; y: number }; p2: { x: number; y: number } } => Boolean(item));
-  }, [chart.aspects, bodyLookup, center, INNER_CHART_R, anchorLon]);
+  const houseHighlights = useMemo(() => buildHouseHighlights(chart.houses, plottables), [chart.houses, plottables]);
 
   const signArcs = Array.from({ length: 12 }).map((_, index) => {
     const startLon = index * 30;
@@ -617,7 +621,7 @@ export default function AdvancedAstroWheel({
 
         <circle cx={center} cy={center} r={SIGN_INNER_R} fill="none" stroke={DEEP_GRAY} strokeWidth={1.8} />
 
-        {[chart.angles.asc, chart.angles.mc, chart.angles.dsc, chart.angles.ic].map((angle) => {
+        {[chart.angles.asc, chart.angles.mc, chart.angles.ic].filter((angle) => DISPLAY_ANGLE_IDS.has(angle.id)).map((angle) => {
           const labelPos = linePoint(center, outerR * 0.56, angle.lon, anchorLon);
           const degreePos = linePoint(center, outerR * 0.615, angle.lon, anchorLon);
           const accent = DEEP_GRAY;
@@ -646,22 +650,6 @@ export default function AdvancedAstroWheel({
         })}
 
         <circle cx={center} cy={center} r={INNER_CHART_R} fill="#fff" fillOpacity={0.985} stroke="#edf2f7" strokeWidth={1.1} />
-        {aspectLines.map((aspect) => {
-          const style = ASPECT_STYLE[aspect.aspect_type] || { stroke: "#94a3b8", width: 1 };
-          return (
-            <line
-              key={aspect.id}
-              x1={aspect.p1.x}
-              y1={aspect.p1.y}
-              x2={aspect.p2.x}
-              y2={aspect.p2.y}
-              stroke={style.stroke}
-              strokeWidth={style.width}
-              strokeOpacity={0.78}
-              strokeDasharray={style.dasharray}
-            />
-          );
-        })}
 
         {plottables.map((point) => {
           const placement = placements.get(point.id) || { track: 0, angleOffset: 0 };
@@ -745,14 +733,23 @@ export default function AdvancedAstroWheel({
           );
         })}
 
-        {chart.houses.map((house) => {
+        {chart.houses.map((house, index) => {
           const outer = linePoint(center, SIGN_INNER_R, house.lon, anchorLon);
           const inner = linePoint(center, CENTER_DISC_R, house.lon, anchorLon);
           const next = chart.houses[house.house % 12];
           const labelPos = linePoint(center, HOUSE_LABEL_R, midpointLon(house.lon, next.lon), anchorLon);
+          const notePos = linePoint(center, HOUSE_LABEL_R * 0.86, midpointLon(house.lon, next.lon), anchorLon);
           const isAngleHouse = [1, 4, 7, 10].includes(house.house);
+          const highlight = houseHighlights[index];
           return (
             <g key={`house-${house.house}`}>
+              {highlight?.isHighlighted && (
+                <path
+                  d={ringArcPath(center, SIGN_INNER_R, CENTER_DISC_R, house.lon, next.lon, anchorLon)}
+                  fill={highlight.fill}
+                  stroke="none"
+                />
+              )}
               <line
                 x1={inner.x}
                 y1={inner.y}
@@ -764,6 +761,19 @@ export default function AdvancedAstroWheel({
               <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" fontSize={size * 0.015} fill="#7b8799" fontWeight={700}>
                 {house.house}
               </text>
+              {highlight?.note ? (
+                <text
+                  x={notePos.x}
+                  y={notePos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={size * 0.0108}
+                  fill="#64748b"
+                  fontWeight={600}
+                >
+                  {highlight.note}
+                </text>
+              ) : null}
             </g>
           );
         })}
