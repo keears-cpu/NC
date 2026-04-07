@@ -54,4 +54,6 @@ async def post_stored_chart_art(record_id: str, payload: ChartArtworkUpdateReque
         record_id=record_id,
         chart_svg=payload.chart_svg,
         chart_svg_updated_at=payload.chart_svg_updated_at,
+        chart=payload.chart,
+        request_payload=payload.request_payload,
     )

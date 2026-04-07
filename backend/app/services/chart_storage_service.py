@@ -306,15 +306,31 @@ async def update_stored_chart_artwork(
     record_id: str,
     chart_svg: str,
     chart_svg_updated_at: str | None = None,
+    chart: NatalChartRecord | None = None,
+    request_payload: ChartExtractRequest | None = None,
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
-    return await update_chart_artwork_postgres(
+    result = await update_chart_artwork_postgres(
         record_id=record_id,
         chart_svg=chart_svg,
         chart_svg_updated_at=chart_svg_updated_at,
         settings=settings,
     )
+    if result.stored or result.message != "record_not_found" or chart is None:
+        return result
+
+    # Recover when the initial chart row was written to Apps Script but missed Postgres.
+    await upsert_chart_record_postgres(chart, request_payload=request_payload, settings=settings)
+    retry_result = await update_chart_artwork_postgres(
+        record_id=record_id,
+        chart_svg=chart_svg,
+        chart_svg_updated_at=chart_svg_updated_at,
+        settings=settings,
+    )
+    if retry_result.stored:
+        retry_result.message = "stored_after_recovery"
+    return retry_result
 
 
 def _merge_storage_results(

@@ -137,6 +137,8 @@ class ChartExtractRequest(BaseModel):
 class ChartArtworkUpdateRequest(BaseModel):
     chart_svg: str = Field(min_length=1)
     chart_svg_updated_at: str | None = None
+    chart: NatalChartRecord | None = None
+    request_payload: ChartExtractRequest | None = None
 
 
 class PaymentPrepareRequest(BaseModel):

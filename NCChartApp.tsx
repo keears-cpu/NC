@@ -844,6 +844,66 @@ export default function AstroChartExtractorPreview() {
       text: [intro, ...lines.map((item) => item.text), outro].join("\n\n"),
     };
   }, [publicBriefReading]);
+  const storageRequestPayload = useMemo(() => ({
+    person_name: form.person_name,
+    phone: form.phone,
+    email: form.email,
+    counselor_code: counselorCodeFromUrl || null,
+    tester_local_id: testerLocalIdFromUrl || null,
+    birth_date: form.birth_date,
+    birth_time_local: form.birth_time_local,
+    timezone: form.timezone,
+    birth_place_name: form.birth_place_name,
+    country_code: form.country_code,
+    latitude: Number(form.latitude),
+    longitude: Number(form.longitude),
+    zodiac_type: form.zodiac_type,
+    house_system: form.house_system,
+    node_mode: form.node_mode,
+    lilith_mode: form.lilith_mode,
+    fortune_formula: "day_night",
+    include_chiron: form.include_chiron,
+    include_juno: form.include_juno,
+    include_vesta: form.include_vesta,
+    include_ceres: form.include_ceres,
+    include_pallas: form.include_pallas,
+    include_vulcan: form.include_vulcan,
+    include_vertex: form.include_vertex,
+    include_fortune: form.include_fortune,
+    report_preset: form.report_preset,
+    report_addons: [],
+    report_id: "",
+    report_viewer_code: form.report_viewer_code || null,
+    report_product_code: form.report_preset,
+    report_payment_status: "pending",
+  }), [
+    counselorCodeFromUrl,
+    form.birth_date,
+    form.birth_place_name,
+    form.birth_time_local,
+    form.country_code,
+    form.email,
+    form.house_system,
+    form.include_ceres,
+    form.include_chiron,
+    form.include_fortune,
+    form.include_juno,
+    form.include_pallas,
+    form.include_vesta,
+    form.include_vertex,
+    form.include_vulcan,
+    form.latitude,
+    form.lilith_mode,
+    form.longitude,
+    form.node_mode,
+    form.person_name,
+    form.phone,
+    form.report_preset,
+    form.report_viewer_code,
+    form.timezone,
+    form.zodiac_type,
+    testerLocalIdFromUrl,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -895,27 +955,59 @@ export default function AstroChartExtractorPreview() {
     let cancelled = false;
 
     const run = async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 80));
-      if (cancelled) return;
-      const chartSvg = serializeChartSvg(chartCardRef.current);
-      if (!chartSvg) {
-        setPendingArtworkRecordId("");
-        return;
+      let lastError = "";
+      for (let attempt = 1; attempt <= 18; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, attempt === 1 ? 120 : 180));
+        if (cancelled) return;
+
+        const chartSvg = serializeChartSvg(chartCardRef.current);
+        if (!chartSvg || chartSvg.length < 200) {
+          lastError = "svg_not_ready";
+          continue;
+        }
+
+        try {
+          const response = await fetch(`${getApiBase()}/stored-charts/${encodeURIComponent(pendingArtworkRecordId)}/chart-art`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chart_svg: chartSvg,
+              chart_svg_updated_at: new Date().toISOString(),
+              chart,
+              request_payload: storageRequestPayload,
+            }),
+          });
+          const raw = await response.text();
+          let result: { stored?: boolean; message?: string } | null = null;
+          try {
+            result = raw ? JSON.parse(raw) : null;
+          } catch {
+            result = null;
+          }
+
+          if (response.ok && result?.stored !== false) {
+            setInternalStatusDetail((prev) => {
+              const suffix = result?.message === "stored_after_recovery" ? "chart svg recovered" : "chart svg synced";
+              return prev?.includes(suffix) ? prev : [prev, suffix].filter(Boolean).join(" · ");
+            });
+            setPendingArtworkRecordId("");
+            return;
+          }
+
+          lastError = result?.message || raw.slice(0, 160) || `HTTP ${response.status}`;
+        } catch (error: any) {
+          lastError = error?.message || "chart_svg_sync_failed";
+        }
       }
 
-      try {
-        await fetch(`${getApiBase()}/stored-charts/${encodeURIComponent(pendingArtworkRecordId)}/chart-art`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chart_svg: chartSvg,
-            chart_svg_updated_at: new Date().toISOString(),
-          }),
+      if (!cancelled) {
+        const detail = `chart svg sync failed: ${lastError || "unknown_error"}`;
+        setInternalStatusDetail((prev) => (prev?.includes(detail) ? prev : [prev, detail].filter(Boolean).join(" · ")));
+        console.warn("[NC] chart-art sync failed", {
+          recordId: pendingArtworkRecordId,
+          error: lastError || "unknown_error",
         });
-      } catch {
-        // 차트 저장 본 흐름이 우선이라 SVG 동기화는 조용히 지나간다.
-      } finally {
-        if (!cancelled) setPendingArtworkRecordId("");
+        setPendingArtworkRecordId("");
       }
     };
 
@@ -923,7 +1015,7 @@ export default function AstroChartExtractorPreview() {
     return () => {
       cancelled = true;
     };
-  }, [chart, pendingArtworkRecordId]);
+  }, [chart, pendingArtworkRecordId, storageRequestPayload]);
 
   useEffect(() => {
     const q = cityQuery.trim();
@@ -1083,42 +1175,10 @@ export default function AstroChartExtractorPreview() {
       return;
     }
     try {
-      const payload = {
-        person_name: form.person_name,
-        phone: form.phone,
-        email: form.email,
-        birth_date: form.birth_date,
-        birth_time_local: form.birth_time_local,
-        timezone: form.timezone,
-        birth_place_name: form.birth_place_name,
-        country_code: form.country_code,
-        latitude: Number(form.latitude),
-        longitude: Number(form.longitude),
-        zodiac_type: form.zodiac_type,
-        house_system: form.house_system,
-        node_mode: form.node_mode,
-        lilith_mode: form.lilith_mode,
-        fortune_formula: "day_night",
-        include_chiron: form.include_chiron,
-        include_juno: form.include_juno,
-        include_vesta: form.include_vesta,
-        include_ceres: form.include_ceres,
-        include_pallas: form.include_pallas,
-        include_vulcan: form.include_vulcan,
-        include_vertex: form.include_vertex,
-        include_fortune: form.include_fortune,
-        report_preset: form.report_preset,
-        report_addons: [],
-        report_id: "",
-        report_viewer_code: form.report_viewer_code || null,
-        report_product_code: form.report_preset,
-        report_payment_status: "pending",
-      };
-
       const res = await fetch(`${getApiBase()}/extract-and-store`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(storageRequestPayload),
       });
 
       if (!res.ok) {
