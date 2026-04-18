@@ -6,23 +6,29 @@ import re
 import httpx
 
 from ..core.config import AppSettings, get_settings
-from ..schemas import ChartExtractRequest, ChartStorageResult, NatalChartRecord, StoredChartDetailResponse, StoredChartListItem, StoredChartListResponse
+from ..schemas import ChartExtractRequest, ChartStorageResult, LaterLifeTimingLayer, NatalChartRecord, StoredChartDetailResponse, StoredChartListItem, StoredChartListResponse
 from .postgres_storage_service import fetch_chart_record_postgres, update_chart_artwork_postgres, upsert_chart_record_postgres
-from .storage_payloads import build_apps_script_payload
+from .storage_payloads import build_apps_script_payload, build_report_request_payload
 
 
 async def store_chart_record(
     chart: NatalChartRecord,
     request_payload: ChartExtractRequest | None = None,
+    later_life_timing: LaterLifeTimingLayer | None = None,
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
 
-    postgres_result = await upsert_chart_record_postgres(chart, request_payload=request_payload, settings=settings)
+    postgres_result = await upsert_chart_record_postgres(
+        chart,
+        request_payload=request_payload,
+        later_life_timing=later_life_timing,
+        settings=settings,
+    )
     if not settings.google_apps_script_url:
         return postgres_result
 
-    payload = build_apps_script_payload(chart, request_payload=request_payload)
+    payload = build_apps_script_payload(chart, request_payload=request_payload, later_life_timing=later_life_timing)
     try:
         async with httpx.AsyncClient(
             timeout=settings.google_apps_script_timeout_seconds,
@@ -144,6 +150,7 @@ def _coerce_stored_chart_item(raw: dict[str, object]) -> StoredChartListItem | N
 
     return StoredChartListItem(
         record_id=record_id,
+        chart_id=str(raw.get("chart_id") or record_id).strip() or None,
         person_name=str(raw.get("person_name") or raw.get("name") or (chart.input.person_name if chart else "") or "").strip() or None,
         phone=str(raw.get("phone") or "").strip() or None,
         birth_date=birth_date,
@@ -338,11 +345,12 @@ def _merge_storage_results(
     postgres_result: ChartStorageResult,
 ) -> ChartStorageResult:
     destinations = [value for value in (apps_script_result.destination, postgres_result.destination) if value]
-    if apps_script_result.stored and postgres_result.stored:
+    storage_state = _resolve_storage_state(apps_script_result, postgres_result)
+    if storage_state == "stored_both":
         message = "stored_both"
-    elif apps_script_result.stored and not postgres_result.stored:
+    elif storage_state == "stored_apps_script_only":
         message = f"stored_apps_script_only; postgres={postgres_result.message}"
-    elif postgres_result.stored and not apps_script_result.stored:
+    elif storage_state == "stored_postgres_only":
         message = f"stored_postgres_only; apps_script={apps_script_result.message}"
     else:
         message = f"apps_script={apps_script_result.message}; postgres={postgres_result.message}"
@@ -357,4 +365,34 @@ def _merge_storage_results(
         row_number=apps_script_result.row_number,
         row_updated=apps_script_result.row_updated,
         row_appended=apps_script_result.row_appended,
+        storage_state=storage_state,
+        stores={
+            "apps_script": _build_store_detail(apps_script_result),
+            "postgres": _build_store_detail(postgres_result),
+        },
     )
+
+
+
+def _resolve_storage_state(
+    apps_script_result: ChartStorageResult,
+    postgres_result: ChartStorageResult,
+) -> str:
+    if apps_script_result.stored and postgres_result.stored:
+        return "stored_both"
+    if apps_script_result.stored and not postgres_result.stored:
+        return "stored_apps_script_only"
+    if postgres_result.stored and not apps_script_result.stored:
+        return "stored_postgres_only"
+    return "stored_neither"
+
+
+
+def _build_store_detail(result: ChartStorageResult) -> dict[str, object]:
+    return {
+        "attempted": result.attempted,
+        "stored": result.stored,
+        "destination": result.destination,
+        "status_code": result.status_code,
+        "message": result.message,
+    }

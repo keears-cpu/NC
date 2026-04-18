@@ -12,10 +12,38 @@ from app.schemas import (
     ChartMetadata,
     ChartSettings,
     HouseCusp,
+    LaterLifeCycleEvent,
+    LaterLifePhaseWindow,
+    LaterLifeTimingLayer,
     NatalChartRecord,
+    ProfectionSnapshot,
+    ChartStorageResult,
     ChartExtractRequest,
+    TraditionalLayer,
+    TraditionalPoint,
+    TraditionalRuler,
 )
 from app.services.chart_storage_service import build_apps_script_payload, build_report_request_payload, store_chart_record
+
+
+def build_settings(*, google_apps_script_url: str | None = "https://script.google.com/macros/s/fake/exec") -> AppSettings:
+    return AppSettings(
+        google_apps_script_url=google_apps_script_url,
+        google_apps_script_timeout_seconds=2.0,
+        storage_backend="apps_script",
+        database_url=None,
+        supabase_url=None,
+        supabase_publishable_key=None,
+        supabase_service_role_key=None,
+        supabase_project_ref=None,
+        portone_store_id=None,
+        portone_channel_key=None,
+        portone_api_secret=None,
+        portone_webhook_secret=None,
+        payment_client_base_url=None,
+        payment_redirect_path="/payment/redirect",
+        payment_webhook_url=None,
+    )
 
 
 def build_sample_chart() -> NatalChartRecord:
@@ -43,6 +71,32 @@ def build_sample_chart() -> NatalChartRecord:
         points=[],
         aspects=[],
         availability=Availability(core_complete=True, soft_missing=[]),
+        traditional=TraditionalLayer(
+            reference_date="2026-04-17",
+            arabic_parts=[
+                TraditionalPoint(
+                    id="fortune",
+                    label="Part of Fortune",
+                    formula_key="fortune",
+                    sign="Capricorn",
+                    degree=10.0,
+                    formatted="Capricorn 10°00’",
+                    lon=280.0,
+                    house=5,
+                )
+            ],
+            profection=ProfectionSnapshot(
+                reference_date="2026-04-17",
+                current_age=46.0,
+                completed_years=46,
+                profection_house=11,
+                activated_sign="Cancer",
+                annual_lord=TraditionalRuler(id="moon", label="Moon"),
+                rotation_degrees=1380.0,
+                cycle_start_date="2026-04-17",
+                cycle_end_date="2027-04-17",
+            ),
+        ),
     )
 
 
@@ -94,7 +148,21 @@ def test_build_apps_script_payload_embeds_chart_json():
 @pytest.mark.anyio
 async def test_store_chart_record_returns_not_configured_without_url():
     chart = build_sample_chart()
-    result = await store_chart_record(chart, settings=AppSettings(google_apps_script_url=None, google_apps_script_timeout_seconds=2.0))
+    
+    async def fake_upsert(*args, **kwargs):
+        return ChartStorageResult(
+            attempted=False,
+            stored=False,
+            destination="postgres",
+            message="GOOGLE_APPS_SCRIPT_URL not configured",
+        )
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr("app.services.chart_storage_service.upsert_chart_record_postgres", fake_upsert)
+    try:
+        result = await store_chart_record(chart, settings=build_settings(google_apps_script_url=None))
+    finally:
+        monkeypatch.undo()
 
     assert result.attempted is False
     assert result.stored is False
@@ -105,6 +173,14 @@ async def test_store_chart_record_returns_not_configured_without_url():
 async def test_store_chart_record_follows_redirects_and_accepts_json_success(monkeypatch):
     chart = build_sample_chart()
     captured: dict[str, object] = {}
+
+    async def fake_upsert(*args, **kwargs):
+        return ChartStorageResult(
+            attempted=True,
+            stored=True,
+            destination="postgres",
+            message="stored",
+        )
 
     class FakeAsyncClient:
         def __init__(self, *args, **kwargs):
@@ -126,20 +202,18 @@ async def test_store_chart_record_follows_redirects_and_accepts_json_success(mon
             )
 
     monkeypatch.setattr("app.services.chart_storage_service.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.services.chart_storage_service.upsert_chart_record_postgres", fake_upsert)
 
     result = await store_chart_record(
         chart,
-        settings=AppSettings(
-            google_apps_script_url="https://script.google.com/macros/s/fake/exec",
-            google_apps_script_timeout_seconds=2.0,
-        ),
+        settings=build_settings(),
     )
 
     assert captured["follow_redirects"] is True
     assert result.attempted is True
     assert result.stored is True
     assert result.status_code == 200
-    assert result.message == "stored"
+    assert result.message == "stored_both"
     assert result.record_id == "sample-chart"
     assert result.row_number == 2
     assert result.row_updated is False
@@ -149,6 +223,14 @@ async def test_store_chart_record_follows_redirects_and_accepts_json_success(mon
 @pytest.mark.anyio
 async def test_store_chart_record_rejects_non_json_success_response(monkeypatch):
     chart = build_sample_chart()
+
+    async def fake_upsert(*args, **kwargs):
+        return ChartStorageResult(
+            attempted=True,
+            stored=True,
+            destination="postgres",
+            message="stored",
+        )
 
     class FakeAsyncClient:
         def __init__(self, *args, **kwargs):
@@ -168,19 +250,17 @@ async def test_store_chart_record_rejects_non_json_success_response(monkeypatch)
             )
 
     monkeypatch.setattr("app.services.chart_storage_service.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.services.chart_storage_service.upsert_chart_record_postgres", fake_upsert)
 
     result = await store_chart_record(
         chart,
-        settings=AppSettings(
-            google_apps_script_url="https://script.google.com/macros/s/fake/exec",
-            google_apps_script_timeout_seconds=2.0,
-        ),
+        settings=build_settings(),
     )
 
     assert result.attempted is True
-    assert result.stored is False
+    assert result.stored is True
     assert result.status_code == 200
-    assert result.message == "apps_script_non_json_response"
+    assert result.message.startswith("stored_postgres_only; apps_script=apps_script_non_json_response")
 
 
 def test_build_report_request_payload_defaults_to_adult_preset():
@@ -190,3 +270,71 @@ def test_build_report_request_payload_defaults_to_adult_preset():
     assert request["preset"] == "adult_deep_blueprint"
     assert request["addons"] == []
     assert request["access"]["viewer_code"] is None
+
+
+def test_build_report_request_payload_includes_later_life_block_when_provided():
+    chart = build_sample_chart()
+    later_life = LaterLifeTimingLayer(
+        reference_date="2026-04-17",
+        current_age=45.25,
+        age_phase="40-50",
+        phase_windows=[LaterLifePhaseWindow(phase_label="40-50", start_age=40.0, end_age=50.0, start_date="2020-01-01", end_date="2030-01-01")],
+        cycle_events=[
+            LaterLifeCycleEvent(
+                event_id="saturn_opposition_saturn_1",
+                transit_body="Saturn",
+                aspect_type="opposition",
+                natal_target="Saturn",
+                start_age=44.0,
+                peak_age=45.0,
+                end_age=46.0,
+                start_date="2020-01-01",
+                peak_date="2021-01-01",
+                end_date="2022-01-01",
+                phase_bucket="40-50",
+                theme_tags=["reality-check"],
+                event_status="current",
+                years_to_peak=0.5,
+                days_to_peak=182,
+                is_within_active_window=True,
+                priority_score=77.0,
+            )
+        ],
+        active_cycle_events=[],
+        upcoming_cycle_events=[],
+        recent_cycle_events=[],
+        primary_transition_event=None,
+        top_theme_tags=["reality-check"],
+    )
+
+    request = build_report_request_payload(chart, later_life_timing=later_life)
+
+    assert request["later_life"]["reference_date"] == "2026-04-17"
+    assert request["later_life"]["age_phase"] == "40-50"
+    assert request["later_life"]["cycle_events"][0]["event_id"] == "saturn_opposition_saturn_1"
+    assert request["later_life"]["active_cycle_events"] == []
+    assert request["later_life"]["upcoming_cycle_events"] == []
+    assert request["later_life"]["primary_transition_event"] is None
+    assert request["later_life"]["top_theme_tags"] == ["reality-check"]
+
+
+def test_build_report_request_payload_includes_traditional_block_when_chart_has_it():
+    chart = build_sample_chart()
+
+    request = build_report_request_payload(chart)
+
+    assert request["traditional"]["reference_date"] == "2026-04-17"
+    assert request["traditional"]["arabic_parts"][0]["id"] == "fortune"
+    assert request["traditional"]["profection"]["annual_lord"]["id"] == "moon"
+
+
+def test_build_report_request_payload_keeps_plain_traditional_without_profection():
+    chart = build_sample_chart()
+    chart.traditional.reference_date = None
+    chart.traditional.profection = None
+
+    request = build_report_request_payload(chart)
+
+    assert request["traditional"]["reference_date"] is None
+    assert request["traditional"]["arabic_parts"][0]["id"] == "fortune"
+    assert request["traditional"]["profection"] is None

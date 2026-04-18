@@ -12,6 +12,17 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 _cached_database_url: str | None = None
 _schema_initialized = False
 
+CORE_STORAGE_TABLES = ("charts", "reports", "counselors")
+PHASE1_FOUNDATION_TABLES = (
+    "storage_audit_runs",
+    "organizations",
+    "organization_memberships",
+    "report_runs",
+    "report_versions",
+    "access_events",
+)
+AUDIT_TABLES = CORE_STORAGE_TABLES + PHASE1_FOUNDATION_TABLES
+
 
 def _normalize_database_url(database_url: str) -> str:
     if database_url.startswith("postgresql://"):
@@ -128,10 +139,86 @@ SCHEMA_STATEMENTS = [
         report_html_url text
     )
     """,
+    """
+    create table if not exists storage_audit_runs (
+        id bigserial primary key,
+        created_at timestamptz not null default now(),
+        scope text not null default 'durable_store',
+        status text not null default 'ok',
+        summary_json jsonb not null default '{}'::jsonb,
+        notes text
+    )
+    """,
+    """
+    create table if not exists organizations (
+        id bigserial primary key,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        name text not null,
+        slug text not null unique,
+        status text not null default 'active',
+        notes text
+    )
+    """,
+    """
+    create table if not exists organization_memberships (
+        id bigserial primary key,
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        organization_id bigint not null references organizations(id) on delete cascade,
+        counselor_id bigint references counselors(id) on delete set null,
+        user_ref text,
+        role text not null default 'member',
+        status text not null default 'active'
+    )
+    """,
+    """
+    create table if not exists report_runs (
+        id bigserial primary key,
+        created_at timestamptz not null default now(),
+        record_id text not null references charts(record_id) on delete cascade,
+        report_id text,
+        run_type text not null default 'initial_generation',
+        status text not null default 'queued',
+        preset text,
+        addons_json jsonb not null default '[]'::jsonb,
+        engine_version text,
+        notes text
+    )
+    """,
+    """
+    create table if not exists report_versions (
+        id bigserial primary key,
+        created_at timestamptz not null default now(),
+        record_id text not null references charts(record_id) on delete cascade,
+        report_run_id bigint references report_runs(id) on delete set null,
+        version_number integer not null default 1,
+        report_payload_json jsonb,
+        report_html text,
+        report_html_url text,
+        unique (record_id, version_number)
+    )
+    """,
+    """
+    create table if not exists access_events (
+        id bigserial primary key,
+        created_at timestamptz not null default now(),
+        record_id text not null references charts(record_id) on delete cascade,
+        event_type text not null,
+        actor_type text not null,
+        actor_ref text,
+        metadata_json jsonb not null default '{}'::jsonb
+    )
+    """,
     "create index if not exists idx_charts_counselor_code on charts(counselor_code)",
     "create index if not exists idx_charts_created_at on charts(created_at desc)",
     "create index if not exists idx_reports_report_id on reports(report_id)",
     "create index if not exists idx_reports_viewer_code on reports(viewer_code)",
+    "create index if not exists idx_organization_memberships_org_id on organization_memberships(organization_id)",
+    "create index if not exists idx_organization_memberships_counselor_id on organization_memberships(counselor_id)",
+    "create index if not exists idx_report_runs_record_id on report_runs(record_id)",
+    "create index if not exists idx_report_versions_record_id on report_versions(record_id)",
+    "create index if not exists idx_access_events_record_id on access_events(record_id)",
     """
     insert into counselors (name, access_code, status, notes)
     values

@@ -6,13 +6,14 @@ from sqlalchemy import text
 
 from ..core.config import AppSettings, get_settings
 from ..core.database import ensure_database_schema, get_engine
-from ..schemas import ChartExtractRequest, ChartStorageResult, NatalChartRecord
+from ..schemas import ChartExtractRequest, ChartStorageResult, LaterLifeTimingLayer, NatalChartRecord
 from .storage_payloads import build_apps_script_payload
 
 
 async def upsert_chart_record_postgres(
     chart: NatalChartRecord,
     request_payload: ChartExtractRequest | None = None,
+    later_life_timing: LaterLifeTimingLayer | None = None,
     settings: AppSettings | None = None,
 ) -> ChartStorageResult:
     settings = settings or get_settings()
@@ -27,7 +28,7 @@ async def upsert_chart_record_postgres(
 
     await ensure_database_schema(settings=settings)
 
-    payload = build_apps_script_payload(chart, request_payload=request_payload)
+    payload = build_apps_script_payload(chart, request_payload=request_payload, later_life_timing=later_life_timing)
     chart_params = {
         "record_id": payload.get("record_id"),
         "chart_id": payload.get("chart_id"),

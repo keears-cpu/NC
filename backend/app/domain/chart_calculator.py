@@ -27,6 +27,7 @@ PLANETS = [
 @dataclass
 class RawChartComputation:
     jd_ut: float
+    birth_datetime_utc: datetime
     cusp_values: list[float]
     houses: list
     angles: dict[str, AnglePoint]
@@ -98,6 +99,7 @@ def calculate_chart(payload: ChartExtractRequest) -> RawChartComputation:
     ensure_ephemeris_path()
     flags = choose_flags(payload.zodiac_type)
     local_dt = parse_local_datetime(payload.birth_date, payload.birth_time_local, payload.timezone)
+    birth_datetime_utc = local_dt.astimezone(ZoneInfo("UTC"))
     jd_ut = julian_day_ut(local_dt)
 
     cusps_raw, ascmc = swe.houses_ex(jd_ut, payload.latitude, payload.longitude, choose_house_system(payload.house_system), flags)
@@ -133,6 +135,7 @@ def calculate_chart(payload: ChartExtractRequest) -> RawChartComputation:
 
     return RawChartComputation(
         jd_ut=jd_ut,
+        birth_datetime_utc=birth_datetime_utc,
         cusp_values=cusp_values,
         houses=houses,
         angles=angles,

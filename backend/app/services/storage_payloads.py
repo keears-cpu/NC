@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import json
 
-from ..schemas import ChartExtractRequest, NatalChartRecord
+from ..schemas import ChartExtractRequest, LaterLifeTimingLayer, NatalChartRecord
 
 
 def build_report_request_payload(
     chart: NatalChartRecord,
     request_payload: ChartExtractRequest | None = None,
+    later_life_timing: LaterLifeTimingLayer | None = None,
 ) -> dict[str, object]:
-    return {
+    report_request: dict[str, object] = {
         "chart": chart.model_dump(mode="json"),
         "preset": request_payload.report_preset if request_payload and request_payload.report_preset else "adult_deep_blueprint",
         "addons": request_payload.report_addons if request_payload else [],
@@ -26,19 +27,26 @@ def build_report_request_payload(
             "payment_status": request_payload.report_payment_status if request_payload else None,
         },
     }
+    if chart.traditional is not None:
+        report_request["traditional"] = chart.traditional.model_dump(mode="json")
+    if later_life_timing is not None:
+        report_request["later_life"] = later_life_timing.model_dump(mode="json")
+    return report_request
 
 
 def build_apps_script_payload(
     chart: NatalChartRecord,
     request_payload: ChartExtractRequest | None = None,
+    later_life_timing: LaterLifeTimingLayer | None = None,
 ) -> dict[str, object]:
     chart_json = chart.model_dump(mode="json")
-    report_request = build_report_request_payload(chart, request_payload=request_payload)
+    report_request = build_report_request_payload(chart, request_payload=request_payload, later_life_timing=later_life_timing)
     return {
         "record_id": chart.metadata.chart_id,
         "chart_id": chart.metadata.chart_id,
         "engine_name": chart.metadata.engine_name,
         "status": chart.metadata.status,
+        "chart": chart_json,  # keep raw chart/report_request alongside JSON blobs for downstream mirrors
         "person_name": chart.input.person_name,
         "phone": request_payload.phone if request_payload else None,
         "email": request_payload.email if request_payload else None,
@@ -50,6 +58,7 @@ def build_apps_script_payload(
         "viewer_code": request_payload.report_viewer_code if request_payload else None,
         "product_code": request_payload.report_product_code if request_payload else None,
         "payment_status": request_payload.report_payment_status if request_payload else None,
+        "report_request": report_request,
         "source_type": "computed_by_fastapi",
         "extraction_mode": "computed_by_swiss_ephemeris",
         "classification": "computed_chart",

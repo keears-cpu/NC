@@ -9,6 +9,8 @@ from .core.database import ensure_database_schema, get_database_status
 from .domain.chart_calculator import ephemeris_runtime_status
 from .geo import fetch_geo_suggestions
 from .schemas import GeoAutocompleteResponse
+from .services.storage_audit_service import get_storage_audit
+from .services.storage_reconciliation_service import reconcile_storage
 
 app = FastAPI(title="Astro Chart Extractor API", version="0.1.0")
 
@@ -44,6 +46,16 @@ async def healthcheck() -> dict[str, object]:
         "database_reachable": database.reachable,
         "database_message": database.message,
     }
+
+
+@app.get("/api/storage/audit")
+async def storage_audit() -> dict[str, object]:
+    return await get_storage_audit(get_settings())
+
+
+@app.get("/api/storage/reconcile")
+async def storage_reconcile(limit: int = Query(default=100, ge=1, le=500)) -> dict[str, object]:
+    return await reconcile_storage(get_settings(), limit=limit)
 
 
 @app.get("/api/geo/autocomplete", response_model=GeoAutocompleteResponse)

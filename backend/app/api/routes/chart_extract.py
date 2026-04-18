@@ -6,7 +6,10 @@ from ...schemas import (
     ChartArtworkUpdateRequest,
     ChartExtractAndStoreResponse,
     ChartExtractRequest,
+    ChartExtractAndStoreRequest,
     ChartStorageResult,
+    LaterLifeChartExtractRequest,
+    LaterLifeChartExtractResponse,
     NatalChartRecord,
     StoredChartDetailResponse,
     StoredChartListResponse,
@@ -15,6 +18,7 @@ from ...schemas import (
 )
 from ...services.chart_service import build_chart_record
 from ...services.chart_storage_service import fetch_stored_chart, fetch_stored_charts, store_chart_record, update_stored_chart_artwork
+from ...services.later_life_cycle_service import build_later_life_timing_layer
 from ...services.chart_text_parser import extract_chart_from_text
 
 router = APIRouter()
@@ -25,10 +29,20 @@ async def post_chart_extract(payload: ChartExtractRequest) -> NatalChartRecord:
     return build_chart_record(payload)
 
 
+@router.post("/api/chart/extract-later-life", response_model=LaterLifeChartExtractResponse)
+async def post_chart_extract_later_life(payload: LaterLifeChartExtractRequest) -> LaterLifeChartExtractResponse:
+    chart = build_chart_record(payload, reference_date=payload.reference_date)
+    later_life = build_later_life_timing_layer(chart, reference_date=payload.reference_date)
+    return LaterLifeChartExtractResponse(chart=chart, later_life=later_life)
+
+
 @router.post("/api/chart/extract-and-store", response_model=ChartExtractAndStoreResponse)
-async def post_chart_extract_and_store(payload: ChartExtractRequest) -> ChartExtractAndStoreResponse:
-    chart = build_chart_record(payload)
-    storage = await store_chart_record(chart, request_payload=payload)
+async def post_chart_extract_and_store(payload: ChartExtractAndStoreRequest) -> ChartExtractAndStoreResponse:
+    chart = build_chart_record(payload, reference_date=payload.reference_date)
+    later_life_timing = None
+    if payload.report_preset == "later_life_integration_report":
+        later_life_timing = build_later_life_timing_layer(chart, reference_date=payload.reference_date)
+    storage = await store_chart_record(chart, request_payload=payload, later_life_timing=later_life_timing)
     return ChartExtractAndStoreResponse(chart=chart, storage=storage)
 
 
